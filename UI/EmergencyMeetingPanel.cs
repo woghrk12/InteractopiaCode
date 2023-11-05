@@ -1,21 +1,17 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
-using Photon.Pun;
 using DG.Tweening;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-public class SettingPanel : UIPanel
+public class EmergencyMeetingPanel : UIPanel
 {
     #region Variables
 
     [SerializeField] private RectTransform panelRect = null;
+
     [SerializeField] private Button closeButton = null;
-    [SerializeField] private Button exitRoomButton = null;
-    [SerializeField] private Button exitGameButton = null;
+    [SerializeField] private CanvasGroup emergencyCallButtonGroup = null;
+    [SerializeField] private Text cooldownText = null;
 
     #endregion Variables
 
@@ -24,16 +20,11 @@ public class SettingPanel : UIPanel
     public override void InitPanel()
     {
         closeButton.onClick.AddListener(OnClickCloseButton);
-        exitRoomButton.onClick.AddListener(OnClickExitRoomButton);
-        exitGameButton.onClick.AddListener(OnClickExitGameButton);
+        emergencyCallButtonGroup.GetComponent<Button>().onClick.AddListener(OnClickCallButton);
 
         OnActive += () =>
         {
             closeButton.interactable = true;
-            exitRoomButton.interactable = true;
-            exitGameButton.interactable = true;
-
-            exitRoomButton.gameObject.SetActive(PhotonNetwork.InRoom && SceneManager.GetActiveScene().buildIndex == (int)EScene.TITLE);
         };
     }
 
@@ -63,6 +54,29 @@ public class SettingPanel : UIPanel
 
     #endregion Override Methods
 
+    #region Methods
+
+    public void SetCooldownText(float cooldown)
+    {
+        cooldownText.text = cooldown.ToString("F0");
+    }
+
+    public void EnableCall()
+    {
+        cooldownText.gameObject.SetActive(false);
+        emergencyCallButtonGroup.interactable = true;
+        emergencyCallButtonGroup.alpha = 1f;
+    }
+    
+    public void BlockCall()
+    {
+        cooldownText.gameObject.SetActive(true);
+        emergencyCallButtonGroup.interactable = false;
+        emergencyCallButtonGroup.alpha = 0.2f;
+    }
+
+    #endregion Methods
+
     #region Event Methods
 
     public void OnClickCloseButton()
@@ -70,30 +84,15 @@ public class SettingPanel : UIPanel
         SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
         closeButton.interactable = false;
-        exitRoomButton.interactable = false;
-        exitGameButton.interactable = false;
 
-        GameManager.UI.ClosePopupPanel<SettingPanel>();
+        GameManager.UI.ClosePopupPanel<EmergencyMeetingPanel>();
     }
 
-    public void OnClickExitRoomButton() 
+    public void OnClickCallButton()
     {
         SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
-        closeButton.interactable = false;
-        exitRoomButton.interactable = false;
-        exitGameButton.interactable = false;
-
-        GameManager.Title.LeaveRoom();
-    }
-
-    public void OnClickExitGameButton() 
-    {
-#if UNITY_EDITOR
-        EditorApplication.ExitPlaymode();
-#else
-        Application.Quit();
-#endif
+        GameManager.Meeting.EmergencyCall();
     }
 
     #endregion Event Methods

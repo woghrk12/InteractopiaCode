@@ -34,7 +34,7 @@ public class PrivateJoinPanel : UIPanel
     {
         Tween panelTween = DoTweenUtil.DoAnchoredPos(
             panelRect,
-            new Vector2(0f, 1500f),
+            new Vector2(0f, -1500f),
             Vector2.zero,
             GlobalDefine.panelAnimationDuration,
             Ease.OutExpo);
@@ -60,6 +60,8 @@ public class PrivateJoinPanel : UIPanel
 
     public void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         enterButton.interactable = false;
         closeButton.interactable = false;
 
@@ -68,9 +70,11 @@ public class PrivateJoinPanel : UIPanel
 
     public void OnClickEnterButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (roomCodeInputField.text == string.Empty)
         {
-            GameManager.UI.Alert("Please write the room code!");
+            GameManager.UI.Alert("방 코드를 입력해 주세요");
             return;
         }
 
@@ -97,7 +101,7 @@ public class PrivateJoinPanel : UIPanel
 
         roomCodeInputField.text = string.Empty;
 
-        GameManager.UI.Alert("You cannot join the room!");
+        GameManager.UI.Alert("방에 참가할 수 없습니다");
         PhotonNetwork.JoinLobby();
     }
 

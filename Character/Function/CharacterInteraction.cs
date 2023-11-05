@@ -42,7 +42,7 @@ public class CharacterInteraction : MonoBehaviour
 
         int lastIdx = (int)EObjectType.END;
 
-        for (int i = 1; i < lastIdx; i *= 2)
+        for (int i = 1; i < lastIdx; i <<= 1)
         {
             nearObjects.Add((EObjectType)i, new List<GameObject>());
             addObjectEvents.Add((EObjectType)i, null);
@@ -107,6 +107,11 @@ public class CharacterInteraction : MonoBehaviour
 
         nearObjects[type].Add(addObject);
         addObjectEvents[type]?.Invoke();
+
+        if (addObject.TryGetComponent(out InteractableObject interactableObject))
+        {
+            interactableObject.OnEnter();
+        }
     }
 
     public void RemoveObject(EObjectType type, GameObject removeObject)
@@ -115,6 +120,11 @@ public class CharacterInteraction : MonoBehaviour
 
         nearObjects[type].Remove(removeObject);
         removeObjectEvents[type]?.Invoke();
+
+        if (removeObject.TryGetComponent(out InteractableObject interactableObject))
+        {
+            interactableObject.OnExit();
+        }
     }
 
     #endregion Methods

@@ -27,9 +27,11 @@ public class NicknamePanel : MonoBehaviour
 
     public void OnClickConfirmButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (nicknameInputfield.text == string.Empty)
         {
-            GameManager.UI.Alert("Please write your nickname!");
+            GameManager.UI.Alert("닉네임을 입력해 주세요");
             return;
         }
 

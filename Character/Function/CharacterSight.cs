@@ -16,20 +16,17 @@ public class CharacterSight : MonoBehaviour
 
     private Mesh circleMesh = null;
     private MeshFilter circleMeshFilter = null;
-    
-    private int rayCount = 200;
+
+    private float fov = 90f;
+    private int rayCount = 90;
+
+    private float viewDistance = 8f;
     private float circleDistance = 1f;
+
+    private LayerMask layerMask;
 
     #endregion Variables
 
-    #region Properties
-
-    public LayerMask LayerMask { set; get; }
-    public float FOV { set; get; } = 150f;
-    public float ViewDistance { set; get; } = 8f;
-
-    #endregion Properties
-    
     #region Unity Events
     
     private void Awake()
@@ -50,19 +47,25 @@ public class CharacterSight : MonoBehaviour
         circleMesh = new();
         circleMeshFilter.mesh = circleMesh;
 
-        LayerMask = LayerMask.GetMask(TagAndLayer.Layer.WALL);
+        layerMask = LayerMask.GetMask(TagAndLayer.Layer.WALL);
     }
 
     #endregion Unity Events
 
     #region Methods
 
+    public void SetFOV(float fov)
+    {
+        this.fov = fov;
+        rayCount = (int)fov;
+    }
+
     public void DrawSight(Vector2 direction)
     {
         Vector3 characterPosition = characterTransform.position;
         Vector3 origin = characterPosition + sightOffset;
-        float angle = Utilities.GetAngleFromVector(direction) + (FOV * 0.5f);
-        float angleIncrease = FOV / rayCount;
+        float angle = Utilities.GetAngleFromVector(direction) + (fov * 0.5f);
+        float angleIncrease = fov / rayCount;
 
         Vector3[] vertices = new Vector3[rayCount + 1 + 1];
         Vector2[] uv = new Vector2[vertices.Length];
@@ -77,10 +80,10 @@ public class CharacterSight : MonoBehaviour
             Vector3 vertex = Vector3.zero;
             Vector3 rayDirection = Utilities.GetVectorFromAngle(angle);
 
-            RaycastHit2D hitObject = Physics2D.Raycast(origin, Utilities.GetVectorFromAngle(angle), ViewDistance, LayerMask);
+            RaycastHit2D hitObject = Physics2D.Raycast(origin, Utilities.GetVectorFromAngle(angle), viewDistance, layerMask);
             if (hitObject.collider == null) // No hit
             {
-                vertex = origin + rayDirection * ViewDistance;
+                vertex = origin + rayDirection * viewDistance;
             }
             else // Hit the object
             {
@@ -128,7 +131,7 @@ public class CharacterSight : MonoBehaviour
             Vector3 vertex = Vector3.zero;
             Vector3 rayDirection = Utilities.GetVectorFromAngle(angle);
 
-            RaycastHit2D hitObject = Physics2D.Raycast(origin, Utilities.GetVectorFromAngle(angle), circleDistance, LayerMask);
+            RaycastHit2D hitObject = Physics2D.Raycast(origin, Utilities.GetVectorFromAngle(angle), circleDistance, layerMask);
             if (hitObject.collider == null) // No hit
             {
                 vertex = origin + rayDirection * circleDistance;

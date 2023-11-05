@@ -68,6 +68,8 @@ public class AlertPanel : UIPanel
 
     public void OnClickConfirmButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         confirmButton.interactable = false;
         GameManager.UI.ClosePopupPanel<AlertPanel>();
     }

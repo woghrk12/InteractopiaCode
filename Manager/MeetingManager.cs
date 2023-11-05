@@ -15,11 +15,23 @@ public class MeetingManager : MonoBehaviour
 
     private PhotonView managerPhotonview = null;
 
+    [Header("For emergency meeting")]
+    private Coroutine emergencyCooldownCo = null;
+    private float emergencyMeetingCooldown = 0f;
+    private float curEmergencyCooldown = 0f;
+
     [Header("For meeting opening")]
     private ECauseMeeting causeMeeting = ECauseMeeting.NONE;
     private int reporter = -1;
     private int deadBody = -1;
 
+    [Header("For meeting")]
+    private Coroutine meetingCo = null;
+    private MeetingPanel meetingPanel = null;
+    private float meetingTime = 0f;
+
+    [Header("For voting")]
+    private float votingTime = 0f;
     public Action<int, int> VoteEvent = null;
 
     [Header("For meeting end")]
@@ -48,7 +60,15 @@ public class MeetingManager : MonoBehaviour
         reporter = -1;
         deadBody = -1;
 
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+
+        emergencyMeetingCooldown = (int)roomSetting[CustomProperties.EMERGENCY_MEETING_COOLDOWN];
+
+        meetingTime = (int)roomSetting[CustomProperties.MEETING_TIME];
+
+        votingTime = (int)roomSetting[CustomProperties.VOTE_TIME];
         isSkipMeeting = false;
+
         KickedPlayerActorNum = -1;
     }
 
@@ -88,6 +108,30 @@ public class MeetingManager : MonoBehaviour
         // Stop the cooldown of player
         GameManager.InGame.LocalPlayer.StopCooldown();
 
+        // Stop the cooldown of missions
+        Dictionary<EMissionType, List<MissionObject>> missionObjectDictionary = GameManager.InGame.MissionObjectDictionary;
+        foreach (KeyValuePair<EMissionType, List<MissionObject>> missionList in missionObjectDictionary)
+        {
+            foreach (MissionObject missionObject in missionList.Value)
+            {
+                missionObject.StopCooldown();
+            }
+        }
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            if (causeMeeting == ECauseMeeting.EMERGENCYMEETINGCALL)
+            {
+                // Set the cooldown of emergency meeting
+                curEmergencyCooldown = emergencyMeetingCooldown;
+            }
+            else
+            {
+                // Stop the cooldown of emergency meeting
+                StopEmergencyCooldown();
+            }
+        }
+
         // Stop the cooldown of npcs
         Dictionary<ENPCRole, BaseNPC> npcList = GameManager.InGame.NPCList;
         foreach (KeyValuePair<ENPCRole, BaseNPC> npc in GameManager.InGame.NPCList)
@@ -97,11 +141,70 @@ public class MeetingManager : MonoBehaviour
 
         GameManager.Vivox.BlockVoice();
 
-        GameManager.UI.ClosePanel<InGamePanel>(false);
+        if (GameManager.InGame.LocalPlayer.CurTask != null)
+        {
+            GameManager.InGame.LocalPlayer.CurTask.CloseTaskPanel();
+        }
+
+        GameManager.UI.CloseAllPanel(false);
         GameManager.UI.OpenPanel<MeetingOpeningPanel>();
     }
 
     #endregion Enter Meeting
+
+    #region Emergency Meeting
+
+    public void StartEmergencyCooldown()
+    {
+        if (curEmergencyCooldown > 0f)
+        {
+            emergencyCooldownCo = StartCoroutine(WaitEmergencyCooldown());
+        }
+    }
+
+    public void StopEmergencyCooldown()
+    {
+        if (emergencyCooldownCo != null)
+        {
+            StopCoroutine(emergencyCooldownCo);
+            emergencyCooldownCo = null;
+        }
+    }
+
+    private IEnumerator WaitEmergencyCooldown()
+    {
+        managerPhotonview.RPC(nameof(BlockEmergencyMeeting), RpcTarget.AllViaServer);
+        managerPhotonview.RPC(nameof(SetEmergencyCooldown), RpcTarget.AllViaServer, curEmergencyCooldown);
+
+        while (curEmergencyCooldown > 0)
+        {
+            yield return Utilities.WaitForSeconds(0.1f);
+            curEmergencyCooldown -= 0.1f;
+            managerPhotonview.RPC(nameof(SetEmergencyCooldown), RpcTarget.AllViaServer, curEmergencyCooldown);
+        }
+
+        managerPhotonview.RPC(nameof(EnableEmergencyMeeting), RpcTarget.AllViaServer);
+    }
+
+    [PunRPC]
+    private void SetEmergencyCooldown(float cooldown)
+    {
+        GameManager.UI.GetPanel<EmergencyMeetingPanel>().SetCooldownText(cooldown);
+    }
+
+    [PunRPC]
+    private void BlockEmergencyMeeting()
+    {
+        GameManager.UI.GetPanel<EmergencyMeetingPanel>().BlockCall();
+    }
+
+    [PunRPC]
+    private void EnableEmergencyMeeting()
+    {
+        GameManager.UI.GetPanel<EmergencyMeetingPanel>().EnableCall();
+    }
+
+    #endregion Emergency Meeting
 
     #region Start Meeting
 
@@ -139,12 +242,79 @@ public class MeetingManager : MonoBehaviour
     {
         GameManager.Vivox.ReleaseVoice();
 
+        meetingPanel = GameManager.UI.GetPanel<MeetingPanel>();
         GameManager.UI.OpenPanel<MeetingPanel>();
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            meetingCo = StartCoroutine(WaitMeetingTime());
+        }
     }
 
     #endregion Start Meeting
 
+    [PunRPC]
+    private void SetMeetingRPC()
+    {
+        meetingPanel.MeetingStatusText.text = "회의";
+        meetingPanel.BlockVote();
+    }
+
+    [PunRPC]
+    private void SetVotingRPC()
+    {
+        meetingPanel.MeetingStatusText.text = "투표";
+
+        if ((bool)PhotonNetwork.LocalPlayer.CustomProperties[PlayerProperties.IS_DIE]) return;
+
+        meetingPanel.EnableVote();
+    }
+
+    [PunRPC]
+    private void SetTimerRPC(float maxTime, float curTime)
+    {
+        meetingPanel.SetTimer(maxTime, curTime);
+    }
+
+    #region Meeting
+
+    private IEnumerator WaitMeetingTime()
+    {
+        managerPhotonview.RPC(nameof(SetMeetingRPC), RpcTarget.All);
+        
+        float time = meetingTime;
+        managerPhotonview.RPC(nameof(SetTimerRPC), RpcTarget.All, meetingTime, time);
+
+        while (time > 0)
+        {
+            yield return Utilities.WaitForSeconds(0.1f);
+            time -= 0.1f;
+            managerPhotonview.RPC(nameof(SetTimerRPC), RpcTarget.All, meetingTime, time);
+        }
+
+        meetingCo = StartCoroutine(WaitVoteTime());
+    }
+
+    #endregion Meeting
+
     #region Vote
+
+    private IEnumerator WaitVoteTime()
+    {
+        managerPhotonview.RPC(nameof(SetVotingRPC), RpcTarget.All);
+
+        float time = votingTime;
+        managerPhotonview.RPC(nameof(SetTimerRPC), RpcTarget.All, votingTime, time);
+
+        while (time > 0)
+        {
+            yield return Utilities.WaitForSeconds(0.1f);
+            time -= 0.1f;
+            managerPhotonview.RPC(nameof(SetTimerRPC), RpcTarget.All, votingTime, time);
+        }
+
+        CalculateVoteResult();
+    }
 
     public void Vote(int target)
     {
@@ -163,6 +333,8 @@ public class MeetingManager : MonoBehaviour
     [PunRPC]
     private void VoteRPC(int voter, int target)
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_SUCCESS_BEEPS_Single_Tone_Short_07);
+
         VoteEvent?.Invoke(voter, target);
 
         if (PhotonNetwork.IsMasterClient)
@@ -191,17 +363,22 @@ public class MeetingManager : MonoBehaviour
     [PunRPC]
     private void OnKillPlayerRPC(int actorNumber)
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_FIREARM_Shotgun_Model_01b_Fire_Single_RR2_stereo);
+
         GameManager.UI.GetPanel<MeetingPanel>().DeactiveStateButton(actorNumber);
 
         if (PhotonNetwork.LocalPlayer.ActorNumber == actorNumber)
         {
-            GameManager.UI.GetPanel<MeetingPanel>().DisableStateButtons();
+            GameManager.UI.GetPanel<MeetingPanel>().BlockVote();
         }
 
-        if (GameManager.InGame.CheckGameEnd())
+        if (GameManager.InGame.CheckGameEndByAllMafiaDead())
         {
             GameManager.InGame.EndGame();
-            return;
+        }
+        else if (GameManager.InGame.CheckGameEndByNumber())
+        {
+            GameManager.InGame.EndGame();
         }
 
         if (PhotonNetwork.IsMasterClient)
@@ -220,6 +397,13 @@ public class MeetingManager : MonoBehaviour
         {
             if (!(bool)player.Value.CustomProperties[PlayerProperties.IS_VOTE]) return;
         }
+
+        CalculateVoteResult();
+    }
+
+    public void CalculateVoteResult()
+    {
+        Dictionary<int, Player> playerDictionary = GameManager.Network.PlayerDictionaryByActorNum;
 
         // Synthesize the results of the meeting
         Dictionary<int, int> voteResultDictionary = new();
@@ -252,7 +436,7 @@ public class MeetingManager : MonoBehaviour
 
         // Check the results of the meeting
         int maxVoteCount = 0;
-        int kickPlayerActorNubmer = 0;
+        int kickPlayerActorNubmer = -1;
         bool isSameCount = false;
         foreach (KeyValuePair<int, int> vote in voteResultDictionary)
         {
@@ -276,6 +460,12 @@ public class MeetingManager : MonoBehaviour
     {
         KickedPlayerActorNum = kickedPlayer;
         this.isSkipMeeting = isSkipMeeting;
+
+        if (meetingCo != null)
+        {
+            StopCoroutine(meetingCo);
+            meetingCo = null;
+        }
 
         GameManager.UI.OpenPanel<MeetingResultPanel>();
     }

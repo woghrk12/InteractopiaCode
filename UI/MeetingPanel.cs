@@ -11,9 +11,14 @@ public class MeetingPanel : UIPanel
 {
     #region Variables
 
+    [SerializeField] private Text meetingStatusText = null;
+    [SerializeField] private Image timerImage = null;
+    [SerializeField] private Text timerText = null;
+
     [SerializeField] private PlayerButton assasinButton = null;
 
     [SerializeField] private Button settingButton = null;
+    [SerializeField] private Button minimapButton = null;
     [SerializeField] private Button voiceChattingButton = null;
     [SerializeField] private Button textChattingButton = null;
     [SerializeField] private Button skipButton = null;
@@ -22,17 +27,16 @@ public class MeetingPanel : UIPanel
 
     [SerializeField] private RectTransform stateGroupParent = null;
     private Dictionary<int, PlayerStateGroup> playerStateDictionary = new();
-    private Dictionary<int, PlayerStateGroup> alivePlayerStateDictionary = new();
 
     private PlayerStateGroup activeGroup = null;
+
+    [SerializeField] private CanvasGroup[] npcImageList = null;
 
     #endregion Variables
 
     #region Properties
 
-    public Dictionary<int, PlayerStateGroup> AlivePlayerStateDictionary => alivePlayerStateDictionary;
-
-    public Button VoiceChattingButton => voiceChattingButton;
+    public Text MeetingStatusText => meetingStatusText;
 
     #endregion Properties
 
@@ -40,17 +44,21 @@ public class MeetingPanel : UIPanel
 
     public override void InitPanel()
     {
-        var playerDictionary = GameManager.Network.PlayerDictionaryByActorNum;
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+        EOpenVote openVoteMode = (EOpenVote)roomSetting[CustomProperties.OPEN_VOTE];
+
+        Dictionary<int, Player> playerDictionary = GameManager.Network.PlayerDictionaryByActorNum;
         foreach (KeyValuePair<int, Player> player in playerDictionary)
         {
             PlayerStateGroup stateGroup = GameManager.Resource.Instantiate("UI/MeetingPanel/PlayerState", stateGroupParent).GetComponent<PlayerStateGroup>();
-            stateGroup.InitGroup(this, player.Key);
+            stateGroup.InitGroup(this, player.Key, openVoteMode);
             playerStateDictionary.Add(player.Key, stateGroup);
         }
 
         LayoutRebuilder.ForceRebuildLayoutImmediate(stateGroupParent);
 
         settingButton.onClick.AddListener(OnClickSettingButton);
+        minimapButton.onClick.AddListener(OnClickMinimapButton);
         voiceChattingButton.onClick.AddListener(OnClickVoiceChattingButton);
         textChattingButton.onClick.AddListener(OnClickTextChattingButton);
         skipButton.onClick.AddListener(OnClickSkipButton);
@@ -68,27 +76,15 @@ public class MeetingPanel : UIPanel
 
         OnActive += () =>
         {
-            alivePlayerStateDictionary.Clear();
-
-            List<int> aliveCitizen = GameManager.InGame.AliveCitizenPlayerList;
+            // set the player state
+            List<int> aliveNonMafia = GameManager.InGame.AliveNonMafiaPlayerList;
             List<int> aliveMafia = GameManager.InGame.AliveMafiaPlayerList;
-
-            bool isDie = (bool)PhotonNetwork.LocalPlayer.CustomProperties[PlayerProperties.IS_DIE];
-
+           
             foreach (KeyValuePair<int, PlayerStateGroup> stateGroup in playerStateDictionary)
             {
-                if (aliveCitizen.Contains(stateGroup.Key) || aliveMafia.Contains(stateGroup.Key))
+                if (aliveNonMafia.Contains(stateGroup.Key) || aliveMafia.Contains(stateGroup.Key))
                 {
-                    alivePlayerStateDictionary.Add(stateGroup.Key, stateGroup.Value);
-
-                    if (isDie)
-                    {
-                        stateGroup.Value.DisableButton();
-                    }
-                    else
-                    {
-                        stateGroup.Value.ActivePlayerListGroup();
-                    }
+                    stateGroup.Value.DisableButton();
                 }
                 else 
                 {
@@ -96,15 +92,32 @@ public class MeetingPanel : UIPanel
                 }
             }
 
-            skipButton.interactable = !isDie;
+            // Set the npc state
+            Dictionary<ENPCRole, BaseNPC> npcDictionary = GameManager.InGame.NPCList;
+            Dictionary<ENPCRole, BaseNPC> deadNPCDictionary = GameManager.InGame.DeadNPCList;
+
+            foreach (KeyValuePair<ENPCRole, BaseNPC> npc in npcDictionary)
+            {
+                npcImageList[(int)npc.Key].alpha = 1f;
+            }
+
+            foreach (KeyValuePair<ENPCRole, BaseNPC> npc in deadNPCDictionary)
+            {
+                npcImageList[(int)npc.Key].alpha = 0.2f;
+            }
+
+            // Set the button interactable
+            skipButton.interactable = false;
             if (assasinButton != null)
             {
                 assasinButton.IsInteractable = true;
             }
 
-            activeGroup = null;
-
+            bool isDie = (bool)PhotonNetwork.LocalPlayer.CustomProperties[PlayerProperties.IS_DIE];
+            voiceChattingButton.interactable = !isDie;
             voiceBlockImageObject.SetActive(GameManager.Vivox.IsMute);
+
+            activeGroup = null;
         };
     }
 
@@ -124,21 +137,55 @@ public class MeetingPanel : UIPanel
 
     #region Methods
 
+    public void SetActiveVoiceButton(bool isActive)
+    {
+        voiceChattingButton.gameObject.SetActive(isActive);
+        voiceBlockImageObject.SetActive(isActive);
+    }
+
+    public void SetTimer(float maxTime, float curTime)
+    {
+        timerText.text = curTime.ToString("F0");
+        timerImage.fillAmount = curTime / maxTime;
+    }
+
     public void ChangeActiveGroup(PlayerStateGroup playerStateGroup)
     {
         if (activeGroup != null && activeGroup.StateOwner != playerStateGroup.StateOwner)
         {
-            activeGroup.ActivePlayerListGroup(); 
+            activeGroup.ResetGroup(); 
         }
 
         activeGroup = playerStateGroup;
     }
 
-    public void DisableStateButtons()
+    public void EnableVote()
     {
-        foreach (KeyValuePair<int, PlayerStateGroup> stateGroup in alivePlayerStateDictionary)
+        List<int> aliveCitizenList = GameManager.InGame.AliveCitizenPlayerList;
+        List<int> aliveMafiaList = GameManager.InGame.AliveMafiaPlayerList;
+        foreach (int player in aliveCitizenList)
         {
-            stateGroup.Value.DisableButton();
+            playerStateDictionary[player].ResetGroup();
+        }
+        foreach (int player in aliveMafiaList)
+        {
+            playerStateDictionary[player].ResetGroup();
+        }
+
+        skipButton.interactable = true;
+    }
+
+    public void BlockVote()
+    {
+        List<int> aliveCitizenList = GameManager.InGame.AliveCitizenPlayerList;
+        List<int> aliveMafiaList = GameManager.InGame.AliveMafiaPlayerList;
+        foreach (int player in aliveCitizenList)
+        {
+            playerStateDictionary[player].DisableButton();
+        }
+        foreach (int player in aliveMafiaList)
+        {
+            playerStateDictionary[player].DisableButton();
         }
 
         skipButton.interactable = false;
@@ -146,18 +193,32 @@ public class MeetingPanel : UIPanel
 
     public void DeactiveStateButton(int actorNumber)
     {
-        alivePlayerStateDictionary[actorNumber].DeactiveGroup();
-        alivePlayerStateDictionary.Remove(actorNumber);
+        playerStateDictionary[actorNumber].DeactiveGroup();
     }
 
     #endregion Methods
 
     #region Event Methods
 
-    public void OnClickSettingButton() => GameManager.UI.PopupPanel<SettingPanel>();
+    public void OnClickSettingButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.PopupPanel<SettingPanel>();
+    }
+
+    public void OnClickMinimapButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.GetPanel<MinimapPanel>().OpenCause = EMinimapOpenCause.NONE;
+        GameManager.UI.PopupPanel<MinimapPanel>();
+    }
 
     public void OnClickVoiceChattingButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (GameManager.Vivox.IsMute)
         {
             GameManager.Vivox.SetLocalUnmute();
@@ -174,13 +235,17 @@ public class MeetingPanel : UIPanel
     {
         if (!GameManager.Vivox.IsConnected) return;
 
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         GameManager.UI.PopupPanel<TextChattingPanel>();
     }
 
     public void OnClickSkipButton()
     {
-        DisableStateButtons();
-        skipButton.interactable = false;
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        BlockVote();
+
         GameManager.Meeting.Vote(-1);
     }
 
@@ -190,13 +255,7 @@ public class MeetingPanel : UIPanel
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
-        int actorNumber = otherPlayer.ActorNumber;
-
-        if (alivePlayerStateDictionary.ContainsKey(actorNumber))
-        {
-            playerStateDictionary[otherPlayer.ActorNumber].DeactiveGroup();
-            alivePlayerStateDictionary.Remove(actorNumber);
-        }
+        playerStateDictionary[otherPlayer.ActorNumber].DeactiveGroup();
     }
 
     #endregion Photon Events

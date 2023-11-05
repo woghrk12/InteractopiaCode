@@ -130,14 +130,6 @@ public class InGamePlayer : MonoBehaviour
         {
             playerSetting.Add(PlayerProperties.TOTAL_MISSION_COUNT, 0);
         }
-        if (playerSetting.ContainsKey(PlayerProperties.TRANSMITTER_MISSION_COUNT))
-        {
-            playerSetting[PlayerProperties.TRANSMITTER_MISSION_COUNT] = 0;
-        }
-        else
-        {
-            playerSetting.Add(PlayerProperties.TRANSMITTER_MISSION_COUNT, 0);
-        }
         if (playerSetting.ContainsKey(PlayerProperties.MANAGER_NPC_MISSION_COUNT))
         {
             playerSetting[PlayerProperties.MANAGER_NPC_MISSION_COUNT] = 0;
@@ -308,7 +300,6 @@ public class InGamePlayer : MonoBehaviour
 
     public void Report() => localCharacter.Report();
 
-    // TODO : Watch NPC check
     public virtual void Kill() { }
 
     public virtual void Skill() { }

@@ -39,13 +39,33 @@ public class LobbyPanel : UIPanel
 
     #region Event Methods
 
-    public void OnClickCreateRoomButton() => GameManager.UI.OpenPanel<CreateRoomPanel>();
+    public void OnClickCreateRoomButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
-    public void OnClickPublicJoinButton() => GameManager.UI.OpenPanel<PublicJoinPanel>();
+        GameManager.UI.OpenPanel<CreateRoomPanel>();
+    }
 
-    public void OnClickPrivateJoinButton() => GameManager.UI.PopupPanel<PrivateJoinPanel>();
+    public void OnClickPublicJoinButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
-    public void OnClickCancelButton() => GameManager.UI.OpenPanel<StartPanel>();
+        GameManager.UI.OpenPanel<PublicJoinPanel>();
+    }
+
+    public void OnClickPrivateJoinButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.PopupPanel<PrivateJoinPanel>();
+    }
+
+    public void OnClickCancelButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.OpenPanel<StartPanel>();
+    }
 
     #endregion Event Methods
 }

@@ -95,6 +95,8 @@ public class MinimapPanel : UIPanel
 
     private void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         closeButton.interactable = false;
 
         foreach (KeyValuePair<EMapPosition, MapPositionButton> button in mapPositionButtonDictionary)

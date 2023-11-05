@@ -100,11 +100,26 @@ public class StartPanel : UIPanel
 
     #region Event Methods
 
-    public void OnClickStartButton() => GameManager.UI.OpenPanel<LobbyPanel>();
+    public void OnClickStartButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
-    public void OnClickSettingButton() => GameManager.UI.PopupPanel<SettingPanel>();
+        GameManager.UI.OpenPanel<LobbyPanel>();
+    }
 
-    public void OnClickAuthButton() => GameManager.UI.PopupPanel<AuthPanel>();
+    public void OnClickSettingButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.PopupPanel<SettingPanel>();
+    }
+
+    public void OnClickAuthButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.PopupPanel<AuthPanel>();
+    }
 
     public void OnClickQuitButton()
     {

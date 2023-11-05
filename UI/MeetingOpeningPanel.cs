@@ -31,25 +31,7 @@ public class MeetingOpeningPanel : UIPanel
         {
             GameManager.Input.StopMove();
 
-            MeetingManager meetingManager = GameManager.Meeting;
-            switch (meetingManager.CauseMeeting)
-            {
-                case MeetingManager.ECauseMeeting.DEADBODYREPORT:
-                case MeetingManager.ECauseMeeting.DEADNPCREPORT:
-                    reportGroup.gameObject.SetActive(true);
-                    emergencyMeetingGroup.gameObject.SetActive(false);
-
-                    reportGroup.InitGroup(meetingManager.CauseMeeting, meetingManager.Reporter, meetingManager.DeadBody);
-                    break;
-
-                case MeetingManager.ECauseMeeting.EMERGENCYMEETINGCALL:
-                    reportGroup.gameObject.SetActive(false);
-                    emergencyMeetingGroup.gameObject.SetActive(true);
-
-                    emergencyMeetingGroup.InitGroup(meetingManager.Reporter);
-                    break;
-
-            }
+            SoundManager.Instance.SpawnEffect(ESoundKey.SFX_Mystery_HARP);
 
             StartCoroutine(OpenMeetingPanel());
         };
@@ -64,14 +46,26 @@ public class MeetingOpeningPanel : UIPanel
         Sequence activeSequence = DOTween.Sequence()
             .Append(backgroundTween);
 
+        MeetingManager meetingManager = GameManager.Meeting;
+
         switch (GameManager.Meeting.CauseMeeting)
         {
             case MeetingManager.ECauseMeeting.DEADBODYREPORT:
             case MeetingManager.ECauseMeeting.DEADNPCREPORT:
+                reportGroup.gameObject.SetActive(true);
+                emergencyMeetingGroup.gameObject.SetActive(false);
+
+                reportGroup.InitGroup(meetingManager.CauseMeeting, meetingManager.Reporter, meetingManager.DeadBody);
+
                 activeSequence.Append(reportGroup.ActiveAnimation());
                 break;
 
             case MeetingManager.ECauseMeeting.EMERGENCYMEETINGCALL:
+                reportGroup.gameObject.SetActive(false);
+                emergencyMeetingGroup.gameObject.SetActive(true);
+
+                emergencyMeetingGroup.InitGroup(meetingManager.Reporter);
+
                 activeSequence.Append(emergencyMeetingGroup.ActiveAnimation());
                 break;
         }

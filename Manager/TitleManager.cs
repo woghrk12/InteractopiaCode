@@ -51,8 +51,14 @@ public class TitleManager : MonoBehaviourPunCallbacks
 
     public void StartScene()
     {
+        (SoundManager.Instance as SoundManager).PlayBackGroundMusic(ESoundKey.BGM_TEST);
+
         if (PhotonNetwork.InRoom)
         {
+            bool isVisible = (bool)PhotonNetwork.CurrentRoom.CustomProperties[CustomProperties.IS_VISIBLE];
+            PhotonNetwork.CurrentRoom.IsVisible = isVisible;
+            PhotonNetwork.CurrentRoom.IsOpen = true;
+
             EnterRoomEffect();
             GameManager.Vivox.ReleaseVoice();
             GameManager.UI.OpenPanel<RoomPanel>();
@@ -91,8 +97,9 @@ public class TitleManager : MonoBehaviourPunCallbacks
             countDownCo = null;
         }
 
+        PhotonNetwork.LeaveRoom();
         GameManager.Vivox.SetLocalMute();
-
+        GameManager.Vivox.LeaveChannel();
         GameManager.UI.OpenPanel<StartPanel>();
     }
 
@@ -104,7 +111,7 @@ public class TitleManager : MonoBehaviourPunCallbacks
     {
         if (GameManager.Network.PlayerCount > characterObjectDicionary.Count)
         {
-            GameManager.UI.Alert("Not all players are ready yet.");
+            GameManager.UI.Alert("아직 모든 플레이어가 준비되지 않았습니다");
             return false;
         }
 
@@ -113,6 +120,9 @@ public class TitleManager : MonoBehaviourPunCallbacks
 
     public void GameStart()
     {
+        PhotonNetwork.CurrentRoom.IsVisible = false;
+        PhotonNetwork.CurrentRoom.IsOpen = false;
+
         GameManager.Network.InitReadyState();
 
         countDownCo = StartCoroutine(CountDownCo());
@@ -142,6 +152,7 @@ public class TitleManager : MonoBehaviourPunCallbacks
     private void GameStartRPC()
     {
         GameManager.Vivox.BlockVoice();
+        GameManager.Input.StopMove();
 
         Tween fadeOutTween = GameManager.UI.FadeOut(GlobalDefine.fadeEffectDuration);
         fadeOutTween.onComplete += () =>
@@ -159,6 +170,7 @@ public class TitleManager : MonoBehaviourPunCallbacks
         yield return GameManager.Network.CheckReadyCo();
 
         SetRoles();
+        SetMissions();
 
         PhotonNetwork.LoadLevel((int)EScene.INGAME);
     }
@@ -312,6 +324,59 @@ public class TitleManager : MonoBehaviourPunCallbacks
 
     #endregion Set Roles
 
+    #region Set Missions
+
+    private void SetMissions()
+    {
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+        ENumMission numNPCMission = (ENumMission)roomSetting[CustomProperties.NUM_NPC_MISSION];
+        List<int> indexList = new();
+        List<int> randomIndexList = new();
+        int missionCount = 0, count = 0;
+
+        // Set the count of mission objects to be active
+        switch(numNPCMission)
+        {
+            case ENumMission.LITTLE:
+                missionCount = 1;
+                break;
+
+            case ENumMission.MIDDLE:
+                missionCount = 2;
+                break;
+
+            case ENumMission.MANY:
+                missionCount = 3;
+                break;
+
+            default:
+                throw new Exception($"Not supported enum type. Input type : {numNPCMission}");
+        }
+
+        // Init the list of indices
+        for (int index = 0; index < GlobalDefine.MAX_MISSION_OBJECT; index++)
+        {
+            indexList.Add(index);
+        }
+
+        // Generate the random index
+        while (count < missionCount)
+        {
+            int randomIndex = UnityEngine.Random.Range(0, indexList.Count - 1);
+            int index = indexList[randomIndex];
+
+            randomIndexList.Add(index);
+            
+            indexList.RemoveAt(randomIndex);
+            count++;
+        }
+
+        roomSetting[CustomProperties.RANDOM_MISSION_INDEX] = ArrayHelper.ListToArray(randomIndexList);
+        PhotonNetwork.CurrentRoom.SetCustomProperties(roomSetting);
+    }
+
+    #endregion Set Missions
+
     #region Effect Methods
 
     private void EnterRoomEffect()
@@ -348,13 +413,13 @@ public class TitleManager : MonoBehaviourPunCallbacks
         roomSetting[CustomProperties.REMAIN_COLOR_LIST] = remainColorList;
         roomSetting[CustomProperties.USED_COLOR_LIST] = usedColorList;
 
-        if (playerSetting.ContainsKey(PlayerProperties.PLYAER_COLOR))
+        if (playerSetting.ContainsKey(PlayerProperties.PLAYER_COLOR))
         {
-            playerSetting[PlayerProperties.PLYAER_COLOR] = playerColor;
+            playerSetting[PlayerProperties.PLAYER_COLOR] = playerColor;
         }
         else
         {
-            playerSetting.Add(PlayerProperties.PLYAER_COLOR, playerColor);
+            playerSetting.Add(PlayerProperties.PLAYER_COLOR, playerColor);
         }
 
         PhotonNetwork.CurrentRoom.SetCustomProperties(roomSetting);
@@ -363,30 +428,23 @@ public class TitleManager : MonoBehaviourPunCallbacks
         EnterRoomEffect();
     }
 
-    public override void OnPlayerEnteredRoom(Player newPlayer)
-    {
-        if (countDownCo != null)
-        {
-            StopCoroutine(countDownCo);
-            countDownCo = null;
-        }
-    }
-
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+
         if (countDownCo != null)
         {
+            PhotonNetwork.CurrentRoom.IsVisible = (bool)roomSetting[CustomProperties.IS_VISIBLE];
+            PhotonNetwork.CurrentRoom.IsOpen = true;
             StopCoroutine(countDownCo);
             countDownCo = null;
         }
 
         if (PhotonNetwork.IsMasterClient)
         {
-            PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
-
             int[] remainColorList = (int[])roomSetting[CustomProperties.REMAIN_COLOR_LIST];
             int[] usedColorList = (int[])roomSetting[CustomProperties.USED_COLOR_LIST];
-            int leftPlayerColor = (int)otherPlayer.CustomProperties[PlayerProperties.PLYAER_COLOR];
+            int leftPlayerColor = (int)otherPlayer.CustomProperties[PlayerProperties.PLAYER_COLOR];
 
             remainColorList = ArrayHelper.Add(leftPlayerColor, remainColorList);
             usedColorList = ArrayHelper.Remove(leftPlayerColor, usedColorList);

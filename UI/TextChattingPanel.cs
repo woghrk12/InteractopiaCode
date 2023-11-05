@@ -40,6 +40,9 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
 
     [SerializeField] private float verticalPadding = 0f;
 
+    private float sendMessageCooldown = 0.5f;
+    private bool canSendMessage = true;
+
     #endregion Variables
 
     #region Override Methods
@@ -65,16 +68,14 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
         // Init Vivox
         VivoxManager vivoxManager = GameManager.Vivox;
         
-        // Init the vivox events
-        vivoxManager.ReceiveMessageEvent = null;
-
         // Set the vivox events
-        vivoxManager.ReceiveMessageEvent += OnReceiveTextMessage;
+        vivoxManager.ReceiveMessageEvent = OnReceiveTextMessage;
         
         OnActive += () =>
         {
             closeButton.interactable = true;
             sendButton.interactable = true;
+            canSendMessage = true;
 
             scroller.ClearAll();
             oldScrollPosition = scroller.ScrollPosition;
@@ -82,7 +83,7 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
 
             ResizeScroller();
 
-            scroller.JumpToDataIndex(textMessageDatas.Count - 1, 1f, 1f, tweenType: EnhancedScroller.TweenType.easeInOutSine, tweenTime: 0.5f, jumpComplete: ResetSpacer);
+            scroller.JumpToDataIndex(textMessageDatas.Count - 1, 1f, 1f, tweenType: EnhancedScroller.TweenType.easeInOutSine, tweenTime: 0.2f, jumpComplete: ResetSpacer);
         };
     }
 
@@ -90,7 +91,7 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
     {
         DoTween panelTween = DoTweenUtil.DoAnchoredPos(
            panelRect,
-           new Vector2(0f, 1500f),
+           new Vector2(0f, -1500f),
            Vector2.zero,
            GlobalDefine.panelAnimationDuration,
            Ease.OutExpo);
@@ -130,7 +131,10 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
 
     public void SendTextMessage(string message)
     {
+        if (!canSendMessage) return;
         if (string.IsNullOrEmpty(message)) return;
+
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
         GameManager.Vivox.SendMessage(message);
         OnSendTextMessage(message);
@@ -138,6 +142,14 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
         // Init the message inputfield
         messageInputField.text = "";
         messageInputField.ActivateInputField();
+
+        canSendMessage = false;
+        Invoke(nameof(EnableSendMessage), sendMessageCooldown);
+    }
+
+    private void EnableSendMessage()
+    {
+        canSendMessage = true;
     }
 
     #endregion Methods
@@ -146,6 +158,8 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
 
     public void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         closeButton.interactable = false;
         sendButton.interactable = false;
         
@@ -159,7 +173,7 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
         TextMessageData textMessageData = new()
         {
             MessageType = EMessageType.MY,
-            Color = CharacterColor.GetColor((ECharacterColor)localPlayer.CustomProperties[PlayerProperties.PLYAER_COLOR]),
+            ActorNumber = localPlayer.ActorNumber,
             Message = message,
             IsDie = CheckLocalPlayerDie()
         };
@@ -184,8 +198,7 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
         TextMessageData textMessageData = new()
         {
             MessageType = EMessageType.OTHER,
-            Color = CharacterColor.GetColor((ECharacterColor)otherPlayer.CustomProperties[PlayerProperties.PLYAER_COLOR]),
-            Nickname = otherPlayer.NickName,
+            ActorNumber = otherPlayer.ActorNumber,
             Message = message,
             IsDie = isRemotePlayerDie
         };
@@ -305,14 +318,14 @@ public class TextChattingPanel : UIPanel, IEnhancedScrollerDelegate
         {
             case EMessageType.MY:
                 cellView = scroller.GetCellView(myTextMessagePrefab) as TextMessageCellView;
-                cellView.SetMyMessageData(textMessageData);
+                cellView.SetMessageData(textMessageData);
                 cellView.name = "[MyTextMessage]";
                 break;
 
             case EMessageType.OTHER:
                 cellView = scroller.GetCellView(otherTextMessagePrefab) as TextMessageCellView;
-                cellView.SetOtherMessageData(textMessageData);
-                cellView.name = "[OtherTextMessage] " + textMessageData.Nickname;
+                cellView.SetMessageData(textMessageData);
+                cellView.name = "[OtherTextMessage]";
                 break;
 
             default:

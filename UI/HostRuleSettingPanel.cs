@@ -83,7 +83,7 @@ public class HostRuleSettingPanel : UIPanel
     {
         Tween panelTween = DoTweenUtil.DoAnchoredPos(
             panelRect,
-            new Vector2(0f, 1500f),
+            new Vector2(0f, -1500f),
             Vector2.zero,
             GlobalDefine.panelAnimationDuration,
             Ease.OutExpo);
@@ -109,6 +109,8 @@ public class HostRuleSettingPanel : UIPanel
 
     public void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         closeButton.interactable = false;
         confirmButton.interactable = false;
 
@@ -117,6 +119,8 @@ public class HostRuleSettingPanel : UIPanel
 
     public void OnClickCommonButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         commonGroup.gameObject.SetActive(true);
 
         meetingAndVoteGroup.gameObject.SetActive(false);
@@ -127,6 +131,8 @@ public class HostRuleSettingPanel : UIPanel
 
     public void OnClickMeetingAndVoteButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         meetingAndVoteGroup.gameObject.SetActive(true);
 
         commonGroup.gameObject.SetActive(false);
@@ -137,6 +143,8 @@ public class HostRuleSettingPanel : UIPanel
 
     public void OnClickRolesAndNPCButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         rolesAndNPCGroup.gameObject.SetActive(true);
 
         commonGroup.gameObject.SetActive(false);
@@ -147,6 +155,8 @@ public class HostRuleSettingPanel : UIPanel
 
     public void OnClickMovementAndSightButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         movementAndSightGroup.gameObject.SetActive(true);
 
         commonGroup.gameObject.SetActive(false);
@@ -157,6 +167,8 @@ public class HostRuleSettingPanel : UIPanel
 
     public void OnClickCooltimeAndMissionButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         cooltimeAndMissionGroup.gameObject.SetActive(true);
 
         commonGroup.gameObject.SetActive(false);
@@ -165,10 +177,17 @@ public class HostRuleSettingPanel : UIPanel
         movementAndSightGroup.gameObject.SetActive(false);
     }
 
-    public void OnClickCancelButton() => GameManager.UI.ClosePopupPanel<HostRuleSettingPanel>();
+    public void OnClickCancelButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.ClosePopupPanel<HostRuleSettingPanel>();
+    }
 
     public void OnClickConfirmButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         PhotonHashTable commonSetting = commonGroup.OptionSetting;
         foreach (var option in commonSetting)
         {

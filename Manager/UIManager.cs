@@ -293,8 +293,6 @@ public class UIManager
 
         // Update the panel variable
         activePanel = null;
-        popupPanelStack.Clear();
-        panelStackIndex = 1;
 
         if (isPlayAnimation)
         {
@@ -335,7 +333,7 @@ public class UIManager
                 closeActivePanel.OnDeactive?.Invoke();
                 closeActivePanel.gameObject.SetActive(false);
             } 
-            
+
             while (popupPanelStack.Count > 0)
             {
                 UIPanel panel = popupPanelStack.Pop();
@@ -436,6 +434,7 @@ public class UIManager
 
         InstantiatePanel<GameStartPanel>();
         InstantiatePanel<InGamePanel>();
+        InstantiatePanel<EmergencyMeetingPanel>();
         InstantiatePanel<MeetingOpeningPanel>();
         InstantiatePanel<MeetingPanel>();
         InstantiatePanel<MeetingResultPanel>();

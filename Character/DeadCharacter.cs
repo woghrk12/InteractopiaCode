@@ -23,7 +23,7 @@ public class DeadCharacter : MonoBehaviourPun
 
         ECharacterColor color = (ECharacterColor)PhotonNetwork.CurrentRoom
             .Players[photonView.Owner.ActorNumber]
-            .CustomProperties[PlayerProperties.PLYAER_COLOR];
+            .CustomProperties[PlayerProperties.PLAYER_COLOR];
 
         // Set player character's color
         characterSprite.material.SetColor(

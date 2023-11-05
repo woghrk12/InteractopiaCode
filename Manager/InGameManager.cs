@@ -23,17 +23,22 @@ public class InGameManager : MonoBehaviourPunCallbacks
     [Header("List for players")]
     private List<int> citizenPlayerList = new();
     private List<int> mafiaPlayerList = new();
-
-    [Header("Dictionary for npcs")]
-    [SerializeField] private List<GameObject> npcObjectList = new();
-    private Dictionary<ENPCRole, BaseNPC> npcList = new();
-    private Dictionary<ENPCRole, BaseNPC> deadNPCList = new();
-    private List<GameObject> deadNPCObjectList = new();
-
+    private List<int> aliveNonMafiaPlayerList = new();
     private List<int> aliveCitizenPlayerList = new();
     private List<int> aliveMafiaPlayerList = new();
     private List<int> deadPlayerList = new();
     private List<int> currentDeadPlayerList = new();
+    private int collectorActorNumber = -1;
+
+    [Header("Dictionary for npcs")]
+    private Dictionary<ENPCRole, BaseNPC> npcList = new();
+    private Dictionary<ENPCRole, BaseNPC> deadNPCList = new();
+    private List<GameObject> deadNPCObjectList = new();
+
+    [Header("Variables for missions")]
+    private Dictionary<EMissionType, List<MissionObject>> missionObjectDictionary = new();
+    private int curTransmitterMissionCount = 0;
+    private int transmitterMissionCount = 0;
 
     private SpawnPositionData spawnPositions = null;
     private SpawnPositionData randomSpawnPositions = null;
@@ -53,16 +58,19 @@ public class InGameManager : MonoBehaviourPunCallbacks
     public List<int> CitizenPlayerList => citizenPlayerList;
     public List<int> MafiaPlayerList => mafiaPlayerList;
 
+    public List<int> AliveNonMafiaPlayerList => aliveNonMafiaPlayerList;
     public List<int> AliveCitizenPlayerList => aliveCitizenPlayerList;
     public List<int> AliveMafiaPlayerList => aliveMafiaPlayerList;
     public List<int> DeadPlayerList => deadPlayerList;
     public List<int> CurrentDeadPlayerList => currentDeadPlayerList;
 
-    public ERoleType WinnerTeam => winnerTeam;
-    public int WinnerActorNumber => winnerActorNumber;
-
     public Dictionary<ENPCRole, BaseNPC> NPCList => npcList;
     public Dictionary<ENPCRole, BaseNPC> DeadNPCList => deadNPCList;
+
+    public Dictionary<EMissionType, List<MissionObject>> MissionObjectDictionary => missionObjectDictionary;
+
+    public ERoleType WinnerTeam => winnerTeam;
+    public int WinnerActorNumber => winnerActorNumber;
 
     #endregion Properties
 
@@ -75,28 +83,99 @@ public class InGameManager : MonoBehaviourPunCallbacks
         spawnPositions = GameManager.Resource.Load<SpawnPositionData>("Data/InGameSpawnPositionData");
         randomSpawnPositions = GameManager.Resource.Load<SpawnPositionData>("Data/RandomSpawnPositionData");
 
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+
+        // Init the player
         foreach (KeyValuePair<int, Player> player in GameManager.Network.PlayerDictionaryByActorNum)
         {
             ERoleType playerTeam = (ERoleType)player.Value.CustomProperties[PlayerProperties.PLAYER_TEAM];
 
-            if (playerTeam != ERoleType.MAFIA)
+            if (playerTeam == ERoleType.CITIZEN)
             {
+                aliveNonMafiaPlayerList.Add(player.Key);
                 citizenPlayerList.Add(player.Key);
                 aliveCitizenPlayerList.Add(player.Key);
             }
-            else
+            else if (playerTeam == ERoleType.MAFIA)
             {
                 mafiaPlayerList.Add(player.Key);
                 aliveMafiaPlayerList.Add(player.Key);
             }
+            else
+            {
+                aliveNonMafiaPlayerList.Add(player.Key);
+
+                ENeutralRole playerRole = (ENeutralRole)player.Value.CustomProperties[PlayerProperties.PLAYER_ROLE];
+                if (playerRole == ENeutralRole.COLLECTOR)
+                {
+                    collectorActorNumber = player.Value.ActorNumber;
+                }
+            }
         }
 
-        int[] npcList = (int[])PhotonNetwork.CurrentRoom.CustomProperties[CustomProperties.NPC_ROLES];
-        foreach (int npcIndex in npcList)
+        // Init the npc
+        BaseNPC[] npcs = GameObject.FindObjectsOfType<BaseNPC>();
+        foreach (BaseNPC npc in npcs)
         {
-            BaseNPC npc = npcObjectList[npcIndex].GetComponent<BaseNPC>();
-            this.npcList.Add((ENPCRole)npcIndex, npc);
-            npc.gameObject.SetActive(true);
+            npcList.Add(npc.NPCType, npc);
+        }
+
+        // Find the mission object
+        MissionObject[] missionObjects = GameObject.FindObjectsOfType<MissionObject>();
+        Array.Sort(missionObjects, (a, b) => { return a.transform.GetSiblingIndex().CompareTo(b.transform.GetSiblingIndex()); });
+        Dictionary<EMissionType, List<MissionObject>> missionObjectDictionary = new();
+        foreach (MissionObject missionObject in missionObjects)
+        {
+            if (missionObjectDictionary.ContainsKey(missionObject.MissionType))
+            {
+                missionObjectDictionary[missionObject.MissionType].Add(missionObject);
+            }
+            else
+            {
+                missionObjectDictionary.Add(missionObject.MissionType, new() { missionObject });
+            }
+
+            missionObject.gameObject.SetActive(false);
+        }
+
+        // Set the mission object by using the room setting
+        int[] missionIndexList = (int[])roomSetting[CustomProperties.RANDOM_MISSION_INDEX];
+        foreach (KeyValuePair<EMissionType, List<MissionObject>> missionList in missionObjectDictionary)
+        {
+            foreach (int index in missionIndexList)
+            {
+                missionList.Value[index].gameObject.SetActive(true);
+                if (this.missionObjectDictionary.ContainsKey(missionList.Key))
+                {
+                    this.missionObjectDictionary[missionList.Key].Add(missionList.Value[index]);
+                }
+                else
+                {
+                    this.MissionObjectDictionary.Add(missionList.Key, new() { missionList.Value[index] });
+                }
+                
+            }
+        }
+
+        // Init the count of the transmitter mission
+        ENumMission numTranmitterMission = (ENumMission)roomSetting[CustomProperties.NUM_SPECIAL_MISSION];
+        switch (numTranmitterMission)
+        {
+            case ENumMission.LITTLE:
+                transmitterMissionCount = 3 * PhotonNetwork.CurrentRoom.PlayerCount;
+                break;
+
+            case ENumMission.MIDDLE:
+                transmitterMissionCount = 5 * PhotonNetwork.CurrentRoom.PlayerCount;
+                break;
+
+            case ENumMission.MANY:
+                transmitterMissionCount = 7 * PhotonNetwork.CurrentRoom.PlayerCount;
+                break;
+
+            case ENumMission.VERYMANY:
+                transmitterMissionCount = 9 * PhotonNetwork.CurrentRoom.PlayerCount;
+                break;
         }
 
         PhotonHashTable playerSetting = PhotonNetwork.LocalPlayer.CustomProperties;
@@ -105,6 +184,31 @@ public class InGameManager : MonoBehaviourPunCallbacks
         int role = (int)playerSetting[PlayerProperties.PLAYER_ROLE];
 
         localPlayer = Instantiate(roleData.GetRoleInfo(team, role).PlayerObject).GetComponent<InGamePlayer>();
+    }
+
+    public void ClearTransmitterMission(int addCount)
+    {
+        photonView.RPC(nameof(ClearTransmitterMissionRPC), RpcTarget.AllViaServer, addCount);
+    }
+
+    [PunRPC]
+    public void ClearTransmitterMissionRPC(int addCount)
+    {
+        curTransmitterMissionCount += addCount;
+
+        GameManager.UI.GetPanel<InGamePanel>().SetMissionProgress(curTransmitterMissionCount, transmitterMissionCount);
+
+        if (CheckGameEndByTransmitter())
+        {
+            EndGame();
+        }
+    }
+
+    public void LeaveRoom()
+    {
+        PhotonNetwork.LeaveRoom();
+        GameManager.Vivox.SetLocalMute();
+        GameManager.Vivox.LeaveChannel();
     }
 
     #endregion Methods
@@ -232,9 +336,16 @@ public class InGameManager : MonoBehaviourPunCallbacks
     [PunRPC]
     private void StartWorkRPC()
     {
-        // Release the vivox input device
-        GameManager.Vivox.ReleaseVoice();
-        GameManager.InGame.LocalPlayer.IsSetPosition = true;
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+        if ((bool)roomSetting[CustomProperties.SHORT_DISTANCE_VOICE])
+        {
+            GameManager.Vivox.ReleaseVoice();
+            GameManager.InGame.LocalPlayer.IsSetPosition = true;
+        }
+        else
+        {
+            GameManager.Vivox.BlockVoice();
+        }
 
         // Open the InGame Panel
         GameManager.UI.OpenPanel<InGamePanel>();
@@ -242,9 +353,23 @@ public class InGameManager : MonoBehaviourPunCallbacks
         // Start the cooldown of player
         GameManager.InGame.LocalPlayer.StartCooldown();
 
+        // Start the cooldown of mission
+        foreach (KeyValuePair<EMissionType, List<MissionObject>> missionList in missionObjectDictionary)
+        {
+            foreach (MissionObject missionObject in missionList.Value)
+            {
+                missionObject.StartCooldown();
+            }
+        }
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            // Start the cooldown of emergency meeting
+            GameManager.Meeting.StartEmergencyCooldown();
+        }
+
         // Start the cooldown of npcs
-        Dictionary<ENPCRole, BaseNPC> npcList = GameManager.InGame.NPCList;
-        foreach(KeyValuePair<ENPCRole, BaseNPC> npc in NPCList)
+        foreach (KeyValuePair<ENPCRole, BaseNPC> npc in npcList)
         {
             npc.Value.EnterWork();
         }
@@ -254,35 +379,88 @@ public class InGameManager : MonoBehaviourPunCallbacks
 
     #region Game Ending
 
-    public bool CheckGameEnd()
+    /// <summary>
+    /// Check whether the game is end because of the transmitter mission
+    /// </summary>
+    /// <returns>whether the transmitter mission count is greater or equal to the goal</returns>
+    public bool CheckGameEndByTransmitter()
     {
-        // Neutral rogue player win
-        if (GameManager.Meeting.KickedPlayerActorNum >= 0)
-        {
-            // Neutral rogue player win
-            Player kickedPlayer = GameManager.Network.PlayerDictionaryByActorNum[GameManager.Meeting.KickedPlayerActorNum];
-            if ((ERoleType)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_TEAM] == ERoleType.NEUTRAL
-                && (int)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_ROLE] == (int)ENeutralRole.ROGUE)
-            {
-                winnerTeam = ERoleType.NEUTRAL;
-                winnerActorNumber = kickedPlayer.ActorNumber;
-                GameManager.Meeting.KickedPlayerActorNum = -1;
-                return true;
-            }
-        }
-
-        // Citizen win; All mafia is dead
-        if (aliveMafiaPlayerList.Count == 0)
+        if (transmitterMissionCount <= curTransmitterMissionCount)
         {
             winnerTeam = ERoleType.CITIZEN;
             return true;
         }
 
-        // Mafia win
-        if (aliveCitizenPlayerList.Count <= aliveMafiaPlayerList.Count)
+        return false;
+    }
+
+    /// <summary>
+    /// Check whether the game is end because of the voting
+    /// </summary>
+    /// <returns>whether the kicked player's role is the Rogue of the neutral team</returns>
+    public bool CheckGameEndByVote()
+    {
+        int actorNumber = GameManager.Meeting.KickedPlayerActorNum;
+        
+        if (actorNumber < 0) return false;
+
+        Player kickedPlayer = GameManager.Network.PlayerDictionaryByActorNum[actorNumber];
+        if ((ERoleType)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_TEAM] == ERoleType.NEUTRAL
+            && (int)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_ROLE] == (int)ENeutralRole.ROGUE)
+        {
+            winnerTeam = ERoleType.NEUTRAL;
+            winnerActorNumber = kickedPlayer.ActorNumber;
+            GameManager.Meeting.KickedPlayerActorNum = -1;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Check whether the game is end because the number of mafias is 
+    /// greater or equals to the number of citizens and neutrals
+    /// </summary>
+    /// <returns>the number of mafias >= the number of citizens and neutrals </returns>
+    public bool CheckGameEndByNumber()
+    {
+        if (aliveNonMafiaPlayerList.Count <= aliveMafiaPlayerList.Count)
         {
             winnerTeam = ERoleType.MAFIA;
             return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Check whether the game is end because all maifas are dead
+    /// </summary>
+    /// <returns>the number of mafias <= 0</returns>
+    public bool CheckGameEndByAllMafiaDead()
+    {
+        if (aliveMafiaPlayerList.Count <= 0)
+        {
+            winnerTeam = ERoleType.CITIZEN;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns>the number of dead npcs >= the number of npcs</returns>
+    public bool CheckGameEndByAllNPCDead()
+    {
+        if (deadNPCList.Count >= npcList.Count && collectorActorNumber >= 0)
+        {
+            Player collectorPlayer = GameManager.Network.PlayerDictionaryByActorNum[collectorActorNumber];
+            if ((bool)collectorPlayer.CustomProperties[PlayerProperties.IS_DIE])
+            {
+                return true;
+            }
         }
 
         return false;
@@ -348,6 +526,13 @@ public class InGameManager : MonoBehaviourPunCallbacks
 
     #region Photon Events
 
+    public override void OnLeftRoom()
+    {
+        GameManager.UI.FadeOut(GlobalDefine.fadeEffectDuration)
+            .OnComplete(() => UnityEngine.SceneManagement.SceneManager.LoadScene((int)EScene.TITLE))
+            .Play();
+    }
+
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         if (PhotonNetwork.IsMasterClient)
@@ -357,7 +542,7 @@ public class InGameManager : MonoBehaviourPunCallbacks
 
             int[] remainColorList = (int[])roomSetting[CustomProperties.REMAIN_COLOR_LIST];
             int[] usedColorList = (int[])roomSetting[CustomProperties.USED_COLOR_LIST];
-            int leftPlayerColor = (int)otherPlayer.CustomProperties[PlayerProperties.PLYAER_COLOR];
+            int leftPlayerColor = (int)otherPlayer.CustomProperties[PlayerProperties.PLAYER_COLOR];
 
             remainColorList = ArrayHelper.Add(leftPlayerColor, remainColorList);
             usedColorList = ArrayHelper.Remove(leftPlayerColor, usedColorList);
@@ -381,6 +566,11 @@ public class InGameManager : MonoBehaviourPunCallbacks
             mafiaPlayerList.Remove(otherPlayer.ActorNumber);
         }
 
+        if (aliveNonMafiaPlayerList.Contains(otherPlayer.ActorNumber))
+        {
+            aliveNonMafiaPlayerList.Remove(otherPlayer.ActorNumber);
+        }
+        
         if (aliveCitizenPlayerList.Contains(otherPlayer.ActorNumber))
         {
             aliveCitizenPlayerList.Remove(otherPlayer.ActorNumber);
@@ -399,13 +589,22 @@ public class InGameManager : MonoBehaviourPunCallbacks
             }
         }
 
+        if (collectorActorNumber >= 0 && collectorActorNumber == otherPlayer.ActorNumber)
+        {
+            collectorActorNumber = -1;
+        }
+
         // Release npcs
         foreach (KeyValuePair<ENPCRole, BaseNPC> npc in npcList)
         {
             npc.Value.EndInteract(otherPlayer.ActorNumber);
         }
 
-        if (CheckGameEnd())
+        if (CheckGameEndByAllMafiaDead())
+        {
+            EndGame();
+        }
+        else if (CheckGameEndByNumber())
         {
             EndGame();
         }

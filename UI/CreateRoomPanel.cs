@@ -11,7 +11,7 @@ public class CreateRoomPanel : UIPanel
 {
     #region Variables
 
-    [Range(NetworkManager.MIN_NUM_PLAYERS, NetworkManager.MAX_NUM_PLAYERS)] private int maxPlayer = 10;
+    [Range(NetworkManager.MIN_NUM_PLAYERS, NetworkManager.MAX_NUM_PLAYERS)] private int maxPlayer = 8;
 
     [SerializeField] private Button createButton = null;
     [SerializeField] private Button cancelButton = null;
@@ -44,24 +44,22 @@ public class CreateRoomPanel : UIPanel
         roomSetting.Add(CustomProperties.ROOM_NAME, string.Empty);
         roomSetting.Add(CustomProperties.MAP, 0);
         roomSetting.Add(CustomProperties.SPAWN_POSITION, 0);
+        roomSetting.Add(CustomProperties.IS_VISIBLE, false);
 
         // Common group setting
         roomSetting.Add(CustomProperties.SHORT_DISTANCE_VOICE, true);
-        roomSetting.Add(CustomProperties.RANDOM_START_POINT, true);
+        roomSetting.Add(CustomProperties.RANDOM_START_POINT, false);
         roomSetting.Add(CustomProperties.MAX_MAFIAS, 0);
         roomSetting.Add(CustomProperties.NUM_MAFIAS, 0);
         roomSetting.Add(CustomProperties.MAX_NEUTRALS, 0);
         roomSetting.Add(CustomProperties.NUM_NEUTRALS, 0);
-        roomSetting.Add(CustomProperties.HIDE_EMISSION_INFO, true);
+        roomSetting.Add(CustomProperties.HIDE_EMISSION_INFO, false);
         roomSetting.Add(CustomProperties.BLIND_MAFIA_MODE, false);
-        roomSetting.Add(CustomProperties.GOAST_CAN_SEE_ROLE, true);
 
         // Meeting and vote group setting
-        roomSetting.Add(CustomProperties.OPENING_ADDRESS, false);
         roomSetting.Add(CustomProperties.MEETING_TIME, 30);
         roomSetting.Add(CustomProperties.VOTE_TIME, 60);
-        roomSetting.Add(CustomProperties.OPEN_VOTE, (int)EOpenVote.BLINDNESS);
-        roomSetting.Add(CustomProperties.OPEN_VOTE_RESULT, true);
+        roomSetting.Add(CustomProperties.OPEN_VOTE, (int)EOpenVote.OPEN);
         roomSetting.Add(CustomProperties.EMERGENCY_MEETING_COOLDOWN, 20);
 
         // Roles and NPC group setting
@@ -71,20 +69,15 @@ public class CreateRoomPanel : UIPanel
         roomSetting.Add(CustomProperties.OPTIONAL_MAFIA_ROLES, new int[0]);
         roomSetting.Add(CustomProperties.ESSENTIAL_NEUTRAL_ROLES, new int[0]);
         roomSetting.Add(CustomProperties.OPTIONAL_NEUTRAL_ROLES, new int[0]);
-        roomSetting.Add(CustomProperties.NPC_ROLES, new int[0]);
 
         // Movement and sight group setting
-        roomSetting.Add(CustomProperties.CITIZEN_SIGHT, (int)ESightRange.MIDDLE);
-        roomSetting.Add(CustomProperties.MAFIA_SIGHT, (int)ESightRange.MIDDLE);
-        roomSetting.Add(CustomProperties.NEUTRAL_SIGHT, (int)ESightRange.MIDDLE);
+        roomSetting.Add(CustomProperties.SIGHT_RANGE, (int)ESightRange.MIDDLE);
         roomSetting.Add(CustomProperties.MOVE_SPEED, (int)EMoveSpeed.MIDDLE);
 
         // Cooltime and mission group setting
         roomSetting.Add(CustomProperties.KILL_COOLDOWN, 25);
-        roomSetting.Add(CustomProperties.SABOTAGE_COOLDOWN, 60);
-        roomSetting.Add(CustomProperties.NUM_MISSION, 3);
-        roomSetting.Add(CustomProperties.MIN_MISSION_COOLDOWN, 30);
-        roomSetting.Add(CustomProperties.MAX_MISSION_COOLDOWN, 60);
+        roomSetting.Add(CustomProperties.MISSION_COOLDOWN, 40);
+        roomSetting.Add(CustomProperties.NUM_NPC_MISSION, (int)ENumMission.MIDDLE);
         roomSetting.Add(CustomProperties.NUM_SPECIAL_MISSION, (int)ENumMission.MIDDLE);
 
         // Character colors
@@ -105,8 +98,9 @@ public class CreateRoomPanel : UIPanel
         OnActive += () =>
         {
             createButton.interactable = true;
-            maxPlayer = 10;
-            maxPlayerSlider.value = 10;
+            maxPlayer = 8;
+            maxPlayerSlider.value = 8;
+            maxPlayerText.text = maxPlayer.ToString();
             privacyModeToggle.isOn = false;
             mapList.InitList();
         };
@@ -130,6 +124,9 @@ public class CreateRoomPanel : UIPanel
 
     private void CreateRoom()
     {
+        // Set the room name
+        roomSetting[CustomProperties.ROOM_NAME] = PhotonNetwork.LocalPlayer.NickName + "'s room";
+
         // Set num of mafias
         roomSetting[CustomProperties.MAX_MAFIAS] = maxPlayer / 4;
         roomSetting[CustomProperties.NUM_MAFIAS] = maxPlayer / 4;
@@ -140,7 +137,10 @@ public class CreateRoomPanel : UIPanel
 
         // Set a selected map
         roomSetting[CustomProperties.MAP] = mapList.SelectedIdx;
-        
+
+        // Set visible
+        roomSetting[CustomProperties.IS_VISIBLE] = !privacyModeToggle.isOn;
+
         string roomName = Utilities.ComputeMD5(PhotonNetwork.LocalPlayer.UserId + "_" + System.DateTime.UtcNow.ToFileTime().ToString(), 3);
         RoomOptions roomOption = new RoomOptions
         {
@@ -161,11 +161,18 @@ public class CreateRoomPanel : UIPanel
 
     public void OnClickCreateButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         createButton.interactable = false;
         CreateRoom();
     }
 
-    public void OnClickCancelButton() => GameManager.UI.OpenPanel<LobbyPanel>();
+    public void OnClickCancelButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.OpenPanel<LobbyPanel>();
+    }
 
     public void OnMaxPlayerChanged(float value) 
     {

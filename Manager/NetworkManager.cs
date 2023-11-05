@@ -11,7 +11,7 @@ public class NetworkManager
 {
     #region Constant Variables
 
-    public const int MAX_NUM_PLAYERS = 16;
+    public const int MAX_NUM_PLAYERS = 12;
     public const int MIN_NUM_PLAYERS = 1;
 
     #endregion Constant Variables
@@ -157,7 +157,6 @@ public class NetworkManager
     {
         foreach (KeyValuePair<int, Player> player in playerDictionaryByActorNum)
         {
-            if (!player.Value.CustomProperties.ContainsKey(PlayerProperties.READY_TO_LOAD)) return false;
             if (!(bool)player.Value.CustomProperties[PlayerProperties.READY_TO_LOAD]) return false;
         }
 

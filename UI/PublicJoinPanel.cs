@@ -119,9 +119,11 @@ public class PublicJoinPanel : UIPanel
 
     public void OnClickJoinButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (selectedRoomInfo == null)
         {
-            GameManager.UI.Alert("Select the room item.");
+            GameManager.UI.Alert("참여할 방을 선택해 주세요");
             return;
         }
         
@@ -131,9 +133,19 @@ public class PublicJoinPanel : UIPanel
         PhotonNetwork.JoinRoom(selectedRoomInfo.Name);
     }
 
-    public void OnClickCancelButton() => GameManager.UI.OpenPanel<LobbyPanel>();
+    public void OnClickCancelButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
-    public void OnClickRoomItem(RoomInfo roomInfo) { selectedRoomInfo = roomInfo; }
+        GameManager.UI.OpenPanel<LobbyPanel>();
+    }
+
+    public void OnClickRoomItem(RoomInfo roomInfo) 
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        selectedRoomInfo = roomInfo; 
+    }
 
     #endregion Event Methods
 
@@ -146,7 +158,7 @@ public class PublicJoinPanel : UIPanel
         joinButton.interactable = true;
         cancelButton.interactable = true;
 
-        GameManager.UI.Alert("You cannot join the room!");
+        GameManager.UI.Alert("방에 참가할 수 없습니다");
         PhotonNetwork.JoinLobby();
     }
 

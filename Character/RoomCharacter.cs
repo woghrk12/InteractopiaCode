@@ -31,7 +31,7 @@ public class RoomCharacter : MonoBehaviourPunCallbacks
         characterSprite.gameObject.SetActive(true);
         characterNickname.SetText(player.NickName);
 
-        if (playerSetting.TryGetValue(PlayerProperties.PLYAER_COLOR, out object value))
+        if (playerSetting.TryGetValue(PlayerProperties.PLAYER_COLOR, out object value))
         {
             characterSprite.SetColor("_CharacterColor", CharacterColor.GetColor((ECharacterColor)value));
         }
@@ -86,7 +86,7 @@ public class RoomCharacter : MonoBehaviourPunCallbacks
     {
         if (targetPlayer.ActorNumber != photonView.Owner.ActorNumber) { return; }
 
-        characterSprite.SetColor("_CharacterColor", CharacterColor.GetColor((ECharacterColor)changedProps[PlayerProperties.PLYAER_COLOR]));
+        characterSprite.SetColor("_CharacterColor", CharacterColor.GetColor((ECharacterColor)changedProps[PlayerProperties.PLAYER_COLOR]));
     }
 
     #endregion Photon Events

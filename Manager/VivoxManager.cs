@@ -128,6 +128,9 @@ public class VivoxManager
 
     public void LeaveChannel()
     {
+        if (vivox.ChannelSession == null) return;
+        if (vivox.ChannelSession.ChannelState == ConnectionState.Disconnected) return;
+
         vivox.ChannelSession.Disconnect(callback =>
             {
                 vivox.ChannelSession.PropertyChanged -= OnChannelStatusChanged;

@@ -1,9 +1,10 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Photon.Pun;
 using Photon.Realtime;
 using DG.Tweening;
+
+using PhotonHashTable = ExitGames.Client.Photon.Hashtable;
 
 public class MeetingResultPanel : UIPanel
 {
@@ -31,6 +32,9 @@ public class MeetingResultPanel : UIPanel
         {
             resultText.text = string.Empty;
             roleNameText.text = string.Empty;
+
+            SoundManager.Instance.SpawnEffect(ESoundKey.SFX_DOOR_Sci_Fi_Heavy_Close_Lock_Reverb_stereo);
+
             ShowVoteResult();
         };
         OnDeactive += () => 
@@ -38,7 +42,15 @@ public class MeetingResultPanel : UIPanel
             resultText.gameObject.SetActive(false);
             roleNameText.gameObject.SetActive(false);
 
-            if (GameManager.InGame.CheckGameEnd())
+            if (GameManager.InGame.CheckGameEndByVote())
+            {
+                GameManager.InGame.EndGame();
+            }
+            else if (GameManager.InGame.CheckGameEndByAllMafiaDead())
+            {
+                GameManager.InGame.EndGame();
+            }
+            else if (GameManager.InGame.CheckGameEndByNumber())
             {
                 GameManager.InGame.EndGame();
             }
@@ -79,7 +91,7 @@ public class MeetingResultPanel : UIPanel
 
     private void SkipMeeting()
     {
-        Tween resultTween = resultText.DOText("No one has been kicked.", 2f)
+        Tween resultTween = resultText.DOText("아무도 추방되지 않았습니다.", 2f)
             .OnStart(() => resultText.gameObject.SetActive(true));
 
         DOTween.Sequence()
@@ -92,28 +104,36 @@ public class MeetingResultPanel : UIPanel
     private void KickPlayer(int actorNum)
     {
         GameManager.InGame.CharacterObjectDictionary[actorNum].Die();
-        
+
+        Sequence sequence = DOTween.Sequence();
+
         Player kickedPlayer = GameManager.Network.PlayerDictionaryByActorNum[actorNum];
-        string nickName = kickedPlayer.NickName;
-        string roleName = roleData.GetRoleInfo(
-            (ERoleType)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_TEAM], 
-            (int)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_ROLE]
-            ).RoleName;
         
-        Tween resultTween = resultText.DOText(nickName + " has been kicked.", 2f)
+        string nickName = kickedPlayer.NickName;
+        Tween resultTween = resultText.DOText(nickName + " 님이 추방되었습니다.", 2f)
             .OnStart(() => resultText.gameObject.SetActive(true));
 
-        Tween roleNameTween = roleNameText.DOText("He was the " + roleName + ".", 2f)
-            .OnStart(() => roleNameText.gameObject.SetActive(true));
+        sequence.Append(resultTween);
 
-        DOTween.Sequence()
-            .Append(resultTween)
-            .Append(roleNameTween)
-            .AppendInterval(5f)
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+        if (!(bool)roomSetting[CustomProperties.HIDE_EMISSION_INFO])
+        {
+            string roleName = roleData.GetRoleInfo(
+            (ERoleType)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_TEAM],
+            (int)kickedPlayer.CustomProperties[PlayerProperties.PLAYER_ROLE]
+            ).RoleName;
+
+            Tween roleNameTween = roleNameText.DOText("그는 " + roleName + "였습니다.", 2f)
+                .OnStart(() => roleNameText.gameObject.SetActive(true));
+
+            sequence.Append(roleNameTween);
+        }
+        
+        sequence.AppendInterval(5f)
             .OnComplete(() => GameManager.UI.ClosePanel<MeetingResultPanel>())
             .Play();
 
-        resultCharacter.SetCharacter(actorNum);
+        resultCharacter.SetCharacter(actorNum, EUICharacterType.BODY);
         RectTransform resultCharacterRect = resultCharacter.GetComponent<RectTransform>();
 
         Tween characterMoveTween = DoTweenUtil.DoAnchoredPos(

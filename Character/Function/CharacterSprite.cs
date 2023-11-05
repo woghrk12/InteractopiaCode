@@ -10,6 +10,12 @@ public class CharacterSprite : MonoBehaviour
 
     #endregion Variables
 
+    #region Properties
+
+    public Transform spritePosition => spriteRenderer.transform;
+
+    #endregion Properties
+
     #region Unity Events
 
     private void Awake()

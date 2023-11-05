@@ -45,7 +45,7 @@ public class EndingPanel : UIPanel
 
                 case ERoleType.MAFIA:
                     mafiaGroup.gameObject.SetActive(true);
-                    mafiaGroup.SetMafiaGroup();
+                    mafiaGroup.SetMafiaGroup(false);
 
                     citizenGroup.gameObject.SetActive(false);
                     neutralGroup.gameObject.SetActive(false);
@@ -67,14 +67,14 @@ public class EndingPanel : UIPanel
             if (winnerTeam != ERoleType.NEUTRAL)
             {
                 RoleInfo roleInfo = roleData.GetRoleInfo(winnerTeam, -1);
-                winnerTeamText.text = $"[ {roleData.GetTeamName((int)winnerTeam)} ] Win!";
+                winnerTeamText.text = $"[ {roleData.GetTeamName((int)winnerTeam)} ] ½Â¸®";
                 spotLightImage.color = new Color(roleInfo.RoleColor.r, roleInfo.RoleColor.g, roleInfo.RoleColor.b, spotLightImage.color.a);
             }
             else
             {
                 Player winnerPlayer = GameManager.Network.PlayerDictionaryByActorNum[winnerActorNumber];
                 RoleInfo roleInfo = roleData.GetRoleInfo((ERoleType)winnerPlayer.CustomProperties[PlayerProperties.PLAYER_TEAM], (int)winnerPlayer.CustomProperties[PlayerProperties.PLAYER_ROLE]);
-                winnerTeamText.text = $"[ {roleInfo.RoleName} ] Win!";
+                winnerTeamText.text = $"[ {roleInfo.RoleName} ] ½Â¸®";
                 spotLightImage.color = new Color(roleInfo.RoleColor.r, roleInfo.RoleColor.g, roleInfo.RoleColor.b, spotLightImage.color.a);
             }
 

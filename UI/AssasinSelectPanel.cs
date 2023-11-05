@@ -128,7 +128,7 @@ public class AssasinSelectPanel : UIPanel
     {
         Tween panelTween = DoTweenUtil.DoAnchoredPos(
             panelRect,
-            new Vector2(0f, 1500f),
+            new Vector2(0f, -1500f),
             Vector2.zero,
             GlobalDefine.panelAnimationDuration,
             Ease.OutExpo);
@@ -184,6 +184,8 @@ public class AssasinSelectPanel : UIPanel
 
     public void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         closeButton.interactable = false;
         playerSelectButton.interactable = false;
         cancelButton.interactable = false;
@@ -194,20 +196,26 @@ public class AssasinSelectPanel : UIPanel
 
     public void OnClickPlayerSelectButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         playerSelectGroup.SetActive(false);
         roleSelectGroup.SetActive(true);
 
-        selectedPlayer.SetCharacter(playerSelectedButton.ActorNumber);
+        selectedPlayer.SetCharacter(playerSelectedButton.ActorNumber, EUICharacterType.HEAD);
     }
 
     public void OnClickCancelButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         playerSelectGroup.SetActive(true);
         roleSelectGroup.SetActive(false);
     }
 
     public void OnClickRoleSelectButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         (GameManager.InGame.LocalPlayer as AssasinPlayer).Assasinate(
             playerSelectedButton.ActorNumber,
             roleSelectedButton.Team,

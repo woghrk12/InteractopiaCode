@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Photon.Pun;
 using DG.Tweening;
+
+using PhotonHashTable = ExitGames.Client.Photon.Hashtable;
 
 public class InGamePanel : UIPanel
 {
@@ -17,13 +20,9 @@ public class InGamePanel : UIPanel
     [SerializeField] private RectTransform buttonGroupParent = null;
     [SerializeField] private RoleData roleData = null;
 
+    [SerializeField] private Image missionProgressImage = null;
+
     #endregion Variables
-
-    #region Properties
-
-    public Button VoiceChattingButton => voiceChattingButton;
-
-    #endregion Properties
 
     #region Override Methods
 
@@ -47,7 +46,7 @@ public class InGamePanel : UIPanel
 
         if (playerTeam == (int)ERoleType.CITIZEN)
         {
-            if (playerRole != (int)ECitizenRole.NONE)
+            if (playerRole != (int)ECitizenRole.NONE && playerRole != (int)ECitizenRole.TECHNICIAN)
             {
                 PlayerButton skillButton = GameManager.Resource.Instantiate("UI/InGamePanel/PlayerButton", buttonGroupParent).GetComponent<PlayerButton>();
                 skillButton.InitButton(playerRoleInfo.RoleIconSprite, playerRoleInfo.RoleColor);
@@ -77,6 +76,13 @@ public class InGamePanel : UIPanel
                 skillButton.InitButton(playerRoleInfo.RoleIconSprite, playerRoleInfo.RoleColor);
                 GameManager.Input.SkillButton = skillButton;
             }
+        }
+
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+        if (!(bool)roomSetting[CustomProperties.SHORT_DISTANCE_VOICE])
+        {
+            voiceChattingButton.gameObject.SetActive(false);
+            voiceBlockImageObject.gameObject.SetActive(false);
         }
 
         // Add event for player buttons
@@ -113,6 +119,8 @@ public class InGamePanel : UIPanel
             };
         }
 
+        missionProgressImage.fillAmount = 0f;
+
         OnActive += () =>
         {
             // Check the player's input device
@@ -141,12 +149,34 @@ public class InGamePanel : UIPanel
 
     #endregion Override Methods
 
+    #region Methods
+
+    public void SetActiveVoiceButton(bool isActive)
+    {
+        voiceChattingButton.gameObject.SetActive(isActive);
+        voiceBlockImageObject.SetActive(isActive);
+    }
+
+    public void SetMissionProgress(int curMissionCount, int maxMissionCount)
+    {
+        missionProgressImage.fillAmount = (float)curMissionCount / maxMissionCount;
+    }
+
+    #endregion Methods
+
     #region Event Methods
 
-    public void OnClickSettingButton() => GameManager.UI.PopupPanel<SettingPanel>();
+    public void OnClickSettingButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.PopupPanel<SettingPanel>();
+    }
 
     public void OnClickVoiceChattingButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (GameManager.Vivox.IsMute)
         {
             GameManager.Vivox.SetLocalUnmute();
@@ -161,6 +191,8 @@ public class InGamePanel : UIPanel
 
     public void OnClickMinimapButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         GameManager.UI.GetPanel<MinimapPanel>().OpenCause = EMinimapOpenCause.NONE;
         GameManager.UI.PopupPanel<MinimapPanel>();
     }

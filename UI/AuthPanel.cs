@@ -95,12 +95,16 @@ public class AuthPanel : UIPanel
 
     public void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         closeButton.interactable = false;
         GameManager.UI.ClosePopupPanel<AuthPanel>();
     }
 
     public void OnClickSetNicknameButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         cancelButton.interactable = true;
         confirmButton.interactable = true;
         OpenSetNicknamePanel();
@@ -108,6 +112,8 @@ public class AuthPanel : UIPanel
 
     public void OnClickCancelButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         cancelButton.interactable = false;
         confirmButton.interactable = false;
         CloseSetNicknamePanel();
@@ -115,9 +121,11 @@ public class AuthPanel : UIPanel
 
     public void OnClickConfirmButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (nicknameInputfield.text == string.Empty)
         {
-            GameManager.UI.Alert("Please write your nickname!");
+            GameManager.UI.Alert("닉네임을 입력해 주세요");
             return;
         }
 

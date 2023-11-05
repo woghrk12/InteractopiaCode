@@ -33,6 +33,7 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
     #region Properties
 
     public Transform CharacterTransform => characterTransform;
+    public Transform SpriteTransform => characterSprite.spritePosition;
 
     public int characterCount => characterInteraction.GetCountObjects((int)EObjectType.CHARACTER);
     public int bodyCount => characterInteraction.GetCountObjects((int)(EObjectType.BODY | EObjectType.NPCBODY));
@@ -54,6 +55,7 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
         int actorNumber = photonView.Owner.ActorNumber;
         Player player = GameManager.Network.PlayerDictionaryByActorNum[actorNumber];
         PhotonHashTable playerSetting = player.CustomProperties;
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
 
         // Add player's character
         GameManager.InGame.CharacterObjectDictionary.Add(actorNumber, this);
@@ -64,7 +66,7 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
         // Set player character's color
         characterSprite.SetColor(
             "_CharacterColor",
-            CharacterColor.GetColor((ECharacterColor)playerSetting[PlayerProperties.PLYAER_COLOR])
+            CharacterColor.GetColor((ECharacterColor)playerSetting[PlayerProperties.PLAYER_COLOR])
             );
 
         // Set the nickname color
@@ -75,7 +77,8 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
         }
         else if (localPlayerTeam == ERoleType.MAFIA)
         {
-            characterNickname.SetColor((ERoleType)playerSetting[PlayerProperties.PLAYER_TEAM] == ERoleType.MAFIA ? Color.red : Color.white);
+            Color nicknameColor = (bool)roomSetting[CustomProperties.BLIND_MAFIA_MODE] ? Color.white : Color.red;
+            characterNickname.SetColor((ERoleType)playerSetting[PlayerProperties.PLAYER_TEAM] == ERoleType.MAFIA ? nicknameColor : Color.white);
         }
         else if (localPlayerTeam == ERoleType.NEUTRAL)
         {
@@ -88,17 +91,45 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
                 characterNickname.SetColor(Color.white);
             }
         }
-    }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.F1))
+        // Set character spec by using the room setting
+        EMoveSpeed moveSpeed = (EMoveSpeed)roomSetting[CustomProperties.MOVE_SPEED];
+        switch (moveSpeed)
         {
-            if (photonView.IsMine)
-            {
-                int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
-                GameManager.InGame.NPCList[ENPCRole.INSPECTION].Die(actorNumber);
-            }
+            case EMoveSpeed.SLOW:
+                characterMovement.SetMoveSpeed(2f);
+                break;
+
+            case EMoveSpeed.MIDDLE:
+                characterMovement.SetMoveSpeed(3f);
+                break;
+
+            case EMoveSpeed.FAST:
+                characterMovement.SetMoveSpeed(4f);
+                break;
+
+            default:
+                throw new Exception($"Not supported move speed. Input value : {moveSpeed}");
+        }
+        
+        ESightRange sightRange = (ESightRange)roomSetting[CustomProperties.SIGHT_RANGE];
+        
+        switch (sightRange)
+        {
+            case ESightRange.NARROW:
+                characterSight.SetFOV(90f);
+                break;
+
+            case ESightRange.MIDDLE:
+                characterSight.SetFOV(180f);
+                break;
+
+            case ESightRange.WIDE:
+                characterSight.SetFOV(360f);
+                break;
+
+            default:
+                throw new Exception($"Not supported sight range. Input value : {sightRange}");
         }
     }
 
@@ -108,8 +139,8 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
 
     public void AddInteractionEvent(EObjectType type, Action addEvent, Action removeEvent)
     {
-        characterInteraction.AddObjectEvents[type] = addEvent;
-        characterInteraction.RemoveObjectEvents[type] = removeEvent;
+        characterInteraction.AddObjectEvents[type] += addEvent;
+        characterInteraction.RemoveObjectEvents[type] += removeEvent;
     }
 
     #endregion Methods
@@ -144,6 +175,8 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
 
         characterObject.GetComponent<InGameCharacter>().Die(killer);
 
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_EXPLOSION_Arcade_07_mono);
+
         return characterObject.GetComponent<PhotonView>().Owner.ActorNumber;
     }
 
@@ -158,7 +191,7 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
 
     public void Report()
     {
-        GameObject bodyObject = GetNearestObject((int)EObjectType.BODY);
+        GameObject bodyObject = GetNearestObject((int)EObjectType.BODY | (int)EObjectType.NPCBODY);
 
         if (bodyObject == null) return;
 
@@ -168,8 +201,6 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
         }
         else if (bodyObject.CompareTag("NPCBody"))
         {
-            // TODO : how to classify the actorNumber of npc (actorNubmer >= 0)
-            // Need the logic for encoding and decoding the parameter
             GameManager.Meeting.Report(bodyObject.GetComponent<DeadNPC>().NPCRole);
         }
     }
@@ -224,6 +255,8 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
     [PunRPC]
     private void KilledRPC(int subject)
     {
+        VisualEffectManager.Instance.SpawnEffect(EObjectPoolKey.VFX_explosion_3, SpriteTransform.position);
+
         int deadPlayerActorNumber = photonView.Owner.ActorNumber;
 
         // Release npcs
@@ -249,10 +282,12 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
 
         if (photonView.IsMine) // If the local player ide
         {
+            SoundManager.Instance.SpawnEffect(ESoundKey.SFX_EXPLOSION_Arcade_07_mono);
+
             // Block the voice channel
             GameManager.Vivox.SetLocalMute();
-            GameManager.UI.GetPanel<InGamePanel>().VoiceChattingButton.gameObject.SetActive(false);
-            GameManager.UI.GetPanel<MeetingPanel>().VoiceChattingButton.gameObject.SetActive(false);
+            GameManager.UI.GetPanel<InGamePanel>().SetActiveVoiceButton(false);
+            GameManager.UI.GetPanel<MeetingPanel>().SetActiveVoiceButton(false);
 
             // Close mission popup panel
             if (GameManager.InGame.LocalPlayer.CurTask != null)
@@ -262,6 +297,8 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
 
             // Set the UI panel
             GameManager.UI.CloseAllPopupPanel();
+            GameManager.Input.UseButton.gameObject.SetActive(false);
+            GameManager.Input.ReportButton.gameObject.SetActive(false);
             if (GameManager.Input.KillButton != null)
             {
                 GameManager.Input.KillButton.gameObject.SetActive(false);
@@ -286,8 +323,8 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
             {
                 InGameCharacter character = GameManager.InGame.CharacterObjectDictionary[deadPlayer];
 
-                character.characterSprite.SetFloat("_Alpha", 0.5f);
-                GameManager.InGame.CharacterObjectDictionary[deadPlayer].characterSprite.SetFloat("_Alpha", 0.5f);
+                character.characterSprite.SetFloat("_Alpha", 0.2f);
+                GameManager.InGame.CharacterObjectDictionary[deadPlayer].characterSprite.SetFloat("_Alpha", 0.2f);
                 GameManager.InGame.CharacterObjectDictionary[deadPlayer].characterNickname.NicknameText.gameObject.SetActive(true);
             }
         }
@@ -295,8 +332,13 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
         {
             bool isDie = (bool)PhotonNetwork.LocalPlayer.CustomProperties[PlayerProperties.IS_DIE];
 
-            characterSprite.SetFloat("_Alpha", isDie ? 0.5f : 0f);
+            characterSprite.SetFloat("_Alpha", isDie ? 0.2f : 0f);
             characterNickname.NicknameText.gameObject.SetActive(isDie);
+        }
+
+        if (GameManager.InGame.AliveNonMafiaPlayerList.Contains(deadPlayerActorNumber))
+        {
+            GameManager.InGame.AliveNonMafiaPlayerList.Remove(deadPlayerActorNumber);
         }
 
         if (GameManager.InGame.AliveCitizenPlayerList.Contains(deadPlayerActorNumber))
@@ -311,7 +353,11 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
         GameManager.InGame.DeadPlayerList.Add(deadPlayerActorNumber);
         GameManager.InGame.CurrentDeadPlayerList.Add(deadPlayerActorNumber);
 
-        if (GameManager.InGame.CheckGameEnd())
+        if (GameManager.InGame.CheckGameEndByAllMafiaDead())
+        {
+            GameManager.InGame.EndGame();
+        }
+        else if (GameManager.InGame.CheckGameEndByNumber())
         {
             GameManager.InGame.EndGame();
         }
@@ -326,8 +372,8 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
         {
             // Block the voice channel
             GameManager.Vivox.SetLocalMute();
-            GameManager.UI.GetPanel<InGamePanel>().VoiceChattingButton.gameObject.SetActive(false);
-            GameManager.UI.GetPanel<MeetingPanel>().VoiceChattingButton.gameObject.SetActive(false);
+            GameManager.UI.GetPanel<InGamePanel>().SetActiveVoiceButton(false);
+            GameManager.UI.GetPanel<MeetingPanel>().SetActiveVoiceButton(false);
 
             // Set player properties to indicate that the player has died
             Player player = PhotonNetwork.CurrentRoom.Players[deadPlayerActorNumber];
@@ -342,12 +388,24 @@ public class InGameCharacter : MonoBehaviourPunCallbacks
             characterSprite.SetFloat("_Alpha", 0.2f);
             foreach (int deadPlayer in GameManager.InGame.DeadPlayerList)
             {
-                GameManager.InGame.CharacterObjectDictionary[deadPlayer].characterSprite.SetFloat("_Alpha", 0.5f);
+                InGameCharacter character = GameManager.InGame.CharacterObjectDictionary[deadPlayer];
+
+                character.characterSprite.SetFloat("_Alpha", 0.2f);
+                GameManager.InGame.CharacterObjectDictionary[deadPlayer].characterSprite.SetFloat("_Alpha", 0.2f);
+                GameManager.InGame.CharacterObjectDictionary[deadPlayer].characterNickname.NicknameText.gameObject.SetActive(true);
             }
         }
         else // If the other player die
         {
-            characterSprite.SetFloat("_Alpha", (bool)PhotonNetwork.LocalPlayer.CustomProperties[PlayerProperties.IS_DIE] ? 0.5f : 0f);
+            bool isDie = (bool)PhotonNetwork.LocalPlayer.CustomProperties[PlayerProperties.IS_DIE];
+
+            characterSprite.SetFloat("_Alpha", isDie ? 0.2f : 0f);
+            characterNickname.NicknameText.gameObject.SetActive(isDie);
+        }
+
+        if (GameManager.InGame.AliveNonMafiaPlayerList.Contains(deadPlayerActorNumber))
+        {
+            GameManager.InGame.AliveNonMafiaPlayerList.Remove(deadPlayerActorNumber);
         }
 
         if (GameManager.InGame.AliveCitizenPlayerList.Contains(deadPlayerActorNumber))

@@ -77,6 +77,8 @@ public class NPCPlayerSelectPanel : UIPanel
 
     private void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         closeButton.interactable = false;
         foreach (KeyValuePair<int, PlayerSelectGroup> group in playerSelectGroupDictionary)
         {

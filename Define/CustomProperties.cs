@@ -4,6 +4,7 @@ public class CustomProperties
     public const string ROOM_NAME = "RoomName";
     public const string MAP = "Map";
     public const string SPAWN_POSITION = "SpawnPosition";
+    public const string IS_VISIBLE = "IsVisible";
 
     // For common group
     public const string SHORT_DISTANCE_VOICE = "ShortDistanceVoice";
@@ -14,14 +15,11 @@ public class CustomProperties
     public const string NUM_NEUTRALS = "NumNeutrals";
     public const string HIDE_EMISSION_INFO = "HideEmissionInfo";
     public const string BLIND_MAFIA_MODE = "BlindMafiaMode";
-    public const string GOAST_CAN_SEE_ROLE = "GoastCanSeeRole";
 
     // For meeting and vote group
-    public const string OPENING_ADDRESS = "OpeningAddress";
     public const string VOTE_TIME = "VoteTime";
     public const string MEETING_TIME = "MeetingTime";
     public const string OPEN_VOTE = "OpenVote";
-    public const string OPEN_VOTE_RESULT = "OpenVoteResult";
     public const string EMERGENCY_MEETING_COOLDOWN = "EmergencyMeetingCooldown";
 
     // For roles and NPC group
@@ -31,21 +29,17 @@ public class CustomProperties
     public const string OPTIONAL_MAFIA_ROLES = "OptionalMafiaRoles";
     public const string ESSENTIAL_NEUTRAL_ROLES = "EssentialNeutralRoles";
     public const string OPTIONAL_NEUTRAL_ROLES = "OptionalNeutralRoles";
-    public const string NPC_ROLES = "NPCRoles";
 
     // For movement and sight group
-    public const string CITIZEN_SIGHT = "CitizenSight";
-    public const string MAFIA_SIGHT = "MafiaSight";
-    public const string NEUTRAL_SIGHT = "NeutralSight";
+    public const string SIGHT_RANGE = "SightRange";
     public const string MOVE_SPEED = "MoveSpeed";
 
     // For cooltime and mission group
     public const string KILL_COOLDOWN = "KillCooldown";
-    public const string SABOTAGE_COOLDOWN = "SabotageCooldown";
-    public const string NUM_MISSION = "NumMission";
-    public const string MIN_MISSION_COOLDOWN = "MinMissionCooldown";
-    public const string MAX_MISSION_COOLDOWN = "MaxMissionCooldown";
+    public const string MISSION_COOLDOWN = "MissionCooldown";
+    public const string NUM_NPC_MISSION = "NumNPCMission";
     public const string NUM_SPECIAL_MISSION = "NumSpecialMission";
+    public const string RANDOM_MISSION_INDEX = "RandomMissionIndex";
 
     // For character colors
     public const string REMAIN_COLOR_LIST = "RemainColorList";
@@ -62,7 +56,7 @@ public class PlayerProperties
     public const string READY_TO_LOAD = "ReadyToLoad";
 
     // For player color
-    public const string PLYAER_COLOR = "PlayerColor";
+    public const string PLAYER_COLOR = "PlayerColor";
 
     // For player character's spawn position
     public const string SPAWN_POSITION_INDEX = "SpawnPositionIndex";
@@ -72,7 +66,6 @@ public class PlayerProperties
 
     // For counts of player's npc missions group
     public const string TOTAL_MISSION_COUNT = "TotalMissionCount";
-    public const string TRANSMITTER_MISSION_COUNT = "TransmitterMissionCount";
     public const string MANAGER_NPC_MISSION_COUNT = "ManagerNPCMissionCount";
     public const string WATCHER_NPC_MISSION_COUNT = "WatcherNPCMissionCount";
     public const string REPAIR_NPC_MISSION_COUNT = "RepairNPCMissionCount";

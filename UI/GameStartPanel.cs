@@ -32,6 +32,9 @@ public class GameStartPanel : UIPanel
     {
         OnActive += () =>
         {
+            PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+            bool isBlind = (bool)roomSetting[CustomProperties.BLIND_MAFIA_MODE];
+
             int playerTeam = GameManager.InGame.LocalPlayer.PlayerTeam;
             int playerRole = GameManager.InGame.LocalPlayer.PlayerRole;
 
@@ -41,6 +44,7 @@ public class GameStartPanel : UIPanel
                 case ERoleType.CITIZEN:
                     citizenGroup.gameObject.SetActive(true);
                     citizenGroup.SetAllPlayer();
+                    SoundManager.Instance.SpawnEffect(ESoundKey.SFX_Casual_Lose_1);
 
                     mafiaGroup.gameObject.SetActive(false);
                     neutralGroup.gameObject.SetActive(false);
@@ -48,7 +52,8 @@ public class GameStartPanel : UIPanel
 
                 case ERoleType.MAFIA:
                     mafiaGroup.gameObject.SetActive(true);
-                    mafiaGroup.SetMafiaGroup();
+                    mafiaGroup.SetMafiaGroup(isBlind);
+                    SoundManager.Instance.SpawnEffect(ESoundKey.SFX_Alert_STING_1);
 
                     citizenGroup.gameObject.SetActive(false);
                     neutralGroup.gameObject.SetActive(false);
@@ -57,6 +62,7 @@ public class GameStartPanel : UIPanel
                 case ERoleType.NEUTRAL:
                     neutralGroup.gameObject.SetActive(true);
                     neutralGroup.SetNeutralGroup(PhotonNetwork.LocalPlayer.ActorNumber);
+                    SoundManager.Instance.SpawnEffect(ESoundKey.SFX_Alert_STING_2);
 
                     citizenGroup.gameObject.SetActive(false);
                     mafiaGroup.gameObject.SetActive(false);
@@ -70,7 +76,7 @@ public class GameStartPanel : UIPanel
             RoleInfo playerRoleInfo = roleData.GetRoleInfo((ERoleType)playerTeam, playerRole);
 
             // Set text for indicating how many mafia members are remaining
-            numMafiaLeftText.text = $"There are {GameManager.InGame.AliveMafiaPlayerList.Count} Mafia remaining";
+            numMafiaLeftText.text = $"{roleData.GetTeamName((int)ERoleType.MAFIA)}이 {GameManager.InGame.AliveMafiaPlayerList.Count}명 남았습니다";
 
             // Set UI based on the player's team and role
             roleAndTeamText.text = $"{playerRoleInfo.RoleName} [ {roleData.GetTeamName(playerTeam)} ]";

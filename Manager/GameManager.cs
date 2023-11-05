@@ -120,15 +120,6 @@ public class GameManager : SingletonMonobehaviourPunCallback<GameManager>
         }
         else if (scene.buildIndex == (int)EScene.INGAME)
         {
-            if (PhotonNetwork.IsMasterClient)
-            { 
-                var playerSetting = PhotonNetwork.LocalPlayer.CustomProperties;
-                playerSetting[PlayerProperties.PLAYER_TEAM] = ERoleType.MAFIA;
-                playerSetting[PlayerProperties.PLAYER_ROLE] = EMafiaRole.ASSASSIN;
-                PhotonNetwork.LocalPlayer.SetCustomProperties(playerSetting);
-            }
-
-
             inGameManager = GameObject.FindObjectOfType<InGameManager>();
             inGameManager.Init();
             meetingManager = GameObject.FindObjectOfType<MeetingManager>();
@@ -155,7 +146,11 @@ public class GameManager : SingletonMonobehaviourPunCallback<GameManager>
         if (cause == DisconnectCause.ApplicationQuit) return;
 
         SetLoadingPanel(true);
+
         networkManager.OnDisconnected(cause);
+        vivoxManager.LeaveChannel();
+
+        SceneManager.LoadScene((int)EScene.TITLE);
     }
 
     public override void OnJoinedRoom()
@@ -173,14 +168,14 @@ public class GameManager : SingletonMonobehaviourPunCallback<GameManager>
     {
         networkManager.AddPlayer(newPlayer);
 
-        ShowNotificationMessage($"{newPlayer.NickName} has joined the room.");
+        ShowNotificationMessage($"{newPlayer.NickName}님이 방에 참가했습니다.");
     }
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         networkManager.RemovePlayer(otherPlayer);
 
-        ShowNotificationMessage($"{otherPlayer.NickName} has left the room.");
+        ShowNotificationMessage($"{otherPlayer.NickName}님이 방을 떠났습니다.");
     }
 
     #endregion Photon Callbacks

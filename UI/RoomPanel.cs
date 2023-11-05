@@ -6,6 +6,8 @@ using Photon.Realtime;
 using DG.Tweening;
 using ExitGames.Client.Photon;
 
+using PhotonHashTable = ExitGames.Client.Photon.Hashtable;
+
 public class RoomPanel : UIPanel
 {
     #region Variables
@@ -107,24 +109,33 @@ public class RoomPanel : UIPanel
             countDownText.gameObject.SetActive(true);
         }
 
-        countDownText.text = $"Starting in {countDown} seconds.";
+        countDownText.text = $"{countDown}초 후 시작합니다.";
     }
 
     #endregion Methods
 
     #region Event Methods
 
-    public void OnClickSettingButton() => GameManager.UI.PopupPanel<SettingPanel>();
+    public void OnClickSettingButton()
+    {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
+        GameManager.UI.PopupPanel<SettingPanel>();
+    }
 
     public void OnClickTextChattingButton()
     {
         if (!GameManager.Vivox.IsConnected) return;
+
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
         GameManager.UI.PopupPanel<TextChattingPanel>();
     }
 
     public void OnClickVoiceChattingButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (GameManager.Vivox.IsMute)
         {
             GameManager.Vivox.SetLocalUnmute();
@@ -138,10 +149,10 @@ public class RoomPanel : UIPanel
         }
     }
 
-    public void OnClickCharacterSettingButton() => GameManager.UI.PopupPanel<CharacterSettingPanel>();
-
     public void OnClickStartButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         if (!GameManager.Title.CheckCanStartGame())
         {
             return;
@@ -156,7 +167,14 @@ public class RoomPanel : UIPanel
 
     public void OnMaxPlayerNumChanged(int value) => maxPlayersText.text = value.ToString();
 
-    public void OnRoomPrivateOrPublicToggleValueChanged(bool isOn) => PhotonNetwork.CurrentRoom.IsVisible = !isOn;
+    public void OnRoomPrivateOrPublicToggleValueChanged(bool isOn)
+    {
+        PhotonHashTable roomSetting = PhotonNetwork.CurrentRoom.CustomProperties;
+        roomSetting[CustomProperties.IS_VISIBLE] = !isOn;
+        PhotonNetwork.CurrentRoom.SetCustomProperties(roomSetting);
+
+        PhotonNetwork.CurrentRoom.IsVisible = !isOn;
+    }
 
     #endregion Event Methods
 

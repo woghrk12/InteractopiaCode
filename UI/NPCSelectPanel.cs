@@ -38,6 +38,8 @@ public class NPCSelectPanel : UIPanel
 
         OnActive += () =>
         {
+            closeButton.interactable = true;
+
             Dictionary<ENPCRole, BaseNPC> npcList = GameManager.InGame.NPCList;
             Dictionary<ENPCRole, BaseNPC> deadNPCList = GameManager.InGame.DeadNPCList;
             foreach (KeyValuePair<ENPCRole, BaseNPC> npc in npcList)
@@ -47,6 +49,7 @@ public class NPCSelectPanel : UIPanel
             foreach (KeyValuePair<ENPCRole, BaseNPC> npc in deadNPCList)
             {
                 npcSelectDictionary[npc.Key].SetActive(true);
+                npcSelectDictionary[npc.Key].Button.interactable = true;
             }
         };
         OnDeactive += () =>
@@ -95,6 +98,8 @@ public class NPCSelectPanel : UIPanel
 
     private void OnClickCloseButton()
     {
+        SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
+
         closeButton.interactable = false;
         foreach (KeyValuePair<ENPCRole, NPCSelectGroup> group in npcSelectDictionary)
         {
