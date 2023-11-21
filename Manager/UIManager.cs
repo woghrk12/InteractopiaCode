@@ -416,6 +416,7 @@ public class UIManager
         InstantiatePanel<StartPanel>();
         InstantiatePanel<LobbyPanel>();
         InstantiatePanel<CreateRoomPanel>();
+        InstantiatePanel<DescriptionPanel>();
         InstantiatePanel<PublicJoinPanel>();
         InstantiatePanel<RoomPanel>();
         InstantiatePanel<PrivateJoinPanel>();

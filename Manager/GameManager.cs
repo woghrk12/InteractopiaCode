@@ -88,12 +88,6 @@ public class GameManager : SingletonMonobehaviourPunCallback<GameManager>
         localMuteStatusText.text = vivoxManager.IsMute.ToString();
     }
 
-    private void OnApplicationQuit()
-    {
-        vivoxManager.Clear();
-        networkManager.Clear();
-    }
-
     #endregion Unity Events
 
     #region Static Methods

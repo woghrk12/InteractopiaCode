@@ -12,7 +12,7 @@ public class NetworkManager
     #region Constant Variables
 
     public const int MAX_NUM_PLAYERS = 12;
-    public const int MIN_NUM_PLAYERS = 1;
+    public const int MIN_NUM_PLAYERS = 5;
 
     #endregion Constant Variables
 
@@ -52,16 +52,6 @@ public class NetworkManager
         PhotonNetwork.AutomaticallySyncScene = true;
 
         PhotonNetwork.ConnectUsingSettings();
-    }
-
-    public void Clear()
-    {
-        if (PhotonNetwork.InRoom)
-        {
-            PhotonNetwork.LeaveRoom();
-        }
-
-        PhotonNetwork.Disconnect();
     }
 
     public void UpdateRoomList(List<RoomInfo> roomList)

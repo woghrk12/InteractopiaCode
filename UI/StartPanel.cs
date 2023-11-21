@@ -28,6 +28,7 @@ public class StartPanel : UIPanel
         startButton.onClick.AddListener(OnClickStartButton);
         settingButton.onClick.AddListener(OnClickSettingButton);
         authButton.onClick.AddListener(OnClickAuthButton);
+        howToPlayButton.onClick.AddListener(OnClickHowToPlayButton);
         quitButton.onClick.AddListener(OnClickQuitButton);
     }
 
@@ -119,6 +120,11 @@ public class StartPanel : UIPanel
         SoundManager.Instance.SpawnEffect(ESoundKey.SFX_POP_Brust_08);
 
         GameManager.UI.PopupPanel<AuthPanel>();
+    }
+
+    public void OnClickHowToPlayButton()
+    {
+        GameManager.UI.PopupPanel<DescriptionPanel>();
     }
 
     public void OnClickQuitButton()

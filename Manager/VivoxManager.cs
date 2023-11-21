@@ -71,11 +71,6 @@ public class VivoxManager
         }
     }
 
-    public void Clear()
-    {
-        vivox.Client.Uninitialize();
-    }
-
     public void Login(string userId)
     {
         if (vivox.LoginSession != null && vivox.LoginSession.State == LoginState.LoggedIn) return;
